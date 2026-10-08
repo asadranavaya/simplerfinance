@@ -1,0 +1,53 @@
+{
+  "name": "budget_app",
+  "version": "1.0.0",
+  "scripts": {
+    "bootstrap": "npm ci && npm ci --prefix renderer",
+    "setup": "node scripts/setup.js",
+    "doctor": "node scripts/doctor.js",
+    "start": "node server/index.js",
+    "dev": "concurrently \"npm run server\" \"npm run dev:react\"",
+    "dev:react": "npm run dev --prefix renderer",
+    "server": "node server/index.js",
+    "deploy": "bash scripts/deploy.sh",
+    "build:react": "npm run build --prefix renderer",
+    "build": "npm run build:react",
+    "hot-reload": "npm run build:react && pm2 restart budget-api",
+    "create-admin": "node scripts/create-admin.js",
+    "create-user": "node scripts/create-user.js",
+    "test": "node --require ./test/setup.js --test test/*.test.js",
+    "backup": "node scripts/backup-db.js",
+    "verify-backup": "node scripts/verify-backup.js",
+    "check:public": "node scripts/check-public-release.js",
+    "library:export": "node scripts/export-shared-icon-library.js --acknowledge-redistribution-rights"
+  },
+  "keywords": [],
+  "author": "Asad Ranavaya",
+  "license": "MIT",
+  "description": "A self-hosted personal-finance and budgeting application",
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "drizzle-kit": "^0.31.10",
+    "nodemon": "^3.1.14"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.10.0": true,
+    "bcrypt@6.0.0": true
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.11.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "maxmind": "^5.0.7",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.16",
+    "sharp": "^0.35.5"
+  }
+}

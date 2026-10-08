@@ -1,0 +1,593 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "category.air-travel.air-travel",
+      "entityType": "category",
+      "displayName": "Air Travel",
+      "pattern": "air travel",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.air-travel.air-travel-32.webp",
+          "sha256": "f9233800e007b839dce1dcc358f7140fc64d7d8b28535557606773aef83d50fe",
+          "byteSize": 414
+        },
+        "64": {
+          "file": "category.air-travel.air-travel-64.webp",
+          "sha256": "6360c2118abaa2c0e300aaae9bc0b322de67fc4df6ca84ded672a0ecd4ec0c74",
+          "byteSize": 928
+        },
+        "128": {
+          "file": "category.air-travel.air-travel-128.webp",
+          "sha256": "8b3e2a11b44b6082b8a9a95965ff4c937fc2da692d603b281f8d3afab00f2bf3",
+          "byteSize": 2198
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:41:20.384Z"
+    },
+    {
+      "id": "category.car.auto",
+      "entityType": "category",
+      "displayName": "Car",
+      "pattern": "auto",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.car.auto-32.webp",
+          "sha256": "a5b3542d38d62c02d7a36ef94f487552da038d922492e6bbd01849972c16b49e",
+          "byteSize": 508
+        },
+        "64": {
+          "file": "category.car.auto-64.webp",
+          "sha256": "7d80017e33f943d312c2df01732dfa87aaf988795d45a5691a43bae6d6907799",
+          "byteSize": 1014
+        },
+        "128": {
+          "file": "category.car.auto-128.webp",
+          "sha256": "90ab7f2d2607e586fc195bce18bedf37085f2a5b167e520b516fc053e1ca35a8",
+          "byteSize": 2278
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T13:56:02.695Z"
+    },
+    {
+      "id": "category.drinks.drinks",
+      "entityType": "category",
+      "displayName": "Drinks",
+      "pattern": "drinks",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.drinks.drinks-32.webp",
+          "sha256": "c9753c5922ba06a0f396df346ca99eff10bf8b99e9c2f3eb5e7d50ac22edffdf",
+          "byteSize": 708
+        },
+        "64": {
+          "file": "category.drinks.drinks-64.webp",
+          "sha256": "37499d0dd2f0b7009fa9c7d19f89cab1486fa041854c75acd8f1622076718b3e",
+          "byteSize": 1626
+        },
+        "128": {
+          "file": "category.drinks.drinks-128.webp",
+          "sha256": "c790f8b9c0018c1c98143e7a5b60dc21ffa2c5c61653807767e3b3c8f49e3e20",
+          "byteSize": 3550
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T16:04:55.070Z"
+    },
+    {
+      "id": "category.entertainment.entertainment",
+      "entityType": "category",
+      "displayName": "Entertainment",
+      "pattern": "entertainment",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.entertainment.entertainment-32.webp",
+          "sha256": "0f496527cde32c577e6121e0ae3a33d55920b5c3f1f102b10785c6e63c8654a6",
+          "byteSize": 484
+        },
+        "64": {
+          "file": "category.entertainment.entertainment-64.webp",
+          "sha256": "d9c55979253cded9ab5d342f78fadbc560a219221efa8584472a82a32581c550",
+          "byteSize": 870
+        },
+        "128": {
+          "file": "category.entertainment.entertainment-128.webp",
+          "sha256": "4e4058e97a3bde50812dcf8d651c3b9c56ce60191ae7910dcd1d610185968e4c",
+          "byteSize": 1900
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:27:33.173Z"
+    },
+    {
+      "id": "category.food.food",
+      "entityType": "category",
+      "displayName": "Food",
+      "pattern": "food",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.food.food-32.webp",
+          "sha256": "227334751cdcbaee63d1647fcbf10c4c86c3c8de7138dd9aded1b36215ec4c94",
+          "byteSize": 796
+        },
+        "64": {
+          "file": "category.food.food-64.webp",
+          "sha256": "ffd95abb15a6675ed877ced0f53d5da4fdfa97d2f0d7b8e04e9458cb5e684a13",
+          "byteSize": 1974
+        },
+        "128": {
+          "file": "category.food.food-128.webp",
+          "sha256": "110e8aa5980380296c19bebb80db2a54a7c732d25d4da6c793914a3ab4d9d570",
+          "byteSize": 4642
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T13:50:25.518Z"
+    },
+    {
+      "id": "category.gas.gas",
+      "entityType": "category",
+      "displayName": "Gas",
+      "pattern": "gas",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.gas.gas-32.webp",
+          "sha256": "a745a753be7230516dcc8cb28635561b5f95167ae6e4e29d44299692e422f0aa",
+          "byteSize": 702
+        },
+        "64": {
+          "file": "category.gas.gas-64.webp",
+          "sha256": "f08aac042a4c9f774ccfb922f4f5fc35a40a83c0cf86c015437dea4767d1853b",
+          "byteSize": 1898
+        },
+        "128": {
+          "file": "category.gas.gas-128.webp",
+          "sha256": "44a6993d204c4e0a168e9ff4a76a4dab1f3dbd7388d1ff60f6362692d287c4c6",
+          "byteSize": 3816
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T13:55:04.589Z"
+    },
+    {
+      "id": "category.groceries.groceries",
+      "entityType": "category",
+      "displayName": "Groceries",
+      "pattern": "groceries",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.groceries.groceries-32.webp",
+          "sha256": "796e4748bd45401ba10a27d2404aa4009686686da36184b8e5612026996d2be1",
+          "byteSize": 802
+        },
+        "64": {
+          "file": "category.groceries.groceries-64.webp",
+          "sha256": "4e28fd7593359ca8afb0d0e41e350475ac277258f2687a0558f66ff28506b8a8",
+          "byteSize": 1520
+        },
+        "128": {
+          "file": "category.groceries.groceries-128.webp",
+          "sha256": "f84596523b04362d7f384faef8f1727b5607c60c73c73e5e4b0edfdea6eb1379",
+          "byteSize": 2856
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:35:43.123Z"
+    },
+    {
+      "id": "category.guns.gun",
+      "entityType": "category",
+      "displayName": "Guns",
+      "pattern": "gun",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.guns.gun-32.webp",
+          "sha256": "ba3408e3ba19b2ac8a3ff44fca95fd4c310f1d70e280ffce3e5d885588102025",
+          "byteSize": 704
+        },
+        "64": {
+          "file": "category.guns.gun-64.webp",
+          "sha256": "d369333812902d032419daaf8a7547a556218370df917f492c7a83b86c98b7b1",
+          "byteSize": 1816
+        },
+        "128": {
+          "file": "category.guns.gun-128.webp",
+          "sha256": "9de7d0b3909036e4e0c4046d87ce5458f9854317b98d45b2b263cb2ebcb7c4d8",
+          "byteSize": 5256
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:44:35.527Z"
+    },
+    {
+      "id": "category.hotel.hotel",
+      "entityType": "category",
+      "displayName": "Hotel",
+      "pattern": "hotel",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.hotel.hotel-32.webp",
+          "sha256": "dd8c0b71c6d93c2f2ee627afcfb02095e37ab3f58f7169553b1214085f1b203a",
+          "byteSize": 938
+        },
+        "64": {
+          "file": "category.hotel.hotel-64.webp",
+          "sha256": "fe6852d2eecb2a5cd907defe7571b6b81f10ce3bd8ab1e5a4752c5e56dc4b4d4",
+          "byteSize": 2024
+        },
+        "128": {
+          "file": "category.hotel.hotel-128.webp",
+          "sha256": "8f77d4f9687b82cff01cacd387060870e81534737f10c19c8795ebfa14ea4a27",
+          "byteSize": 4842
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:41:20.763Z"
+    },
+    {
+      "id": "category.rent.rent",
+      "entityType": "category",
+      "displayName": "Rent",
+      "pattern": "rent",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.rent.rent-32.webp",
+          "sha256": "e4a7d716a2dcea43e1d213326b43ffb79d3a0be446e07218447c2a1cb16e41a0",
+          "byteSize": 706
+        },
+        "64": {
+          "file": "category.rent.rent-64.webp",
+          "sha256": "30ca917a1bcb5eb988c6482a526d37e1a8adc10016d196bc20563e661a4d505a",
+          "byteSize": 1474
+        },
+        "128": {
+          "file": "category.rent.rent-128.webp",
+          "sha256": "ad8af8f9ee45d77e24651933243ad708ca8286af53fd400fae5716fd682f6df6",
+          "byteSize": 3250
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:32:04.217Z"
+    },
+    {
+      "id": "category.skydiving.skydiving",
+      "entityType": "category",
+      "displayName": "Skydiving",
+      "pattern": "skydiving",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.skydiving.skydiving-32.webp",
+          "sha256": "67a8472f49fda72668e958d5d6c64686fbbd16964aa72792bbefa52e31bc6712",
+          "byteSize": 1348
+        },
+        "64": {
+          "file": "category.skydiving.skydiving-64.webp",
+          "sha256": "bcc257715277b7b77f8fc608e4598c729758fe51b0a494cf6d44a7a50e41e265",
+          "byteSize": 4206
+        },
+        "128": {
+          "file": "category.skydiving.skydiving-128.webp",
+          "sha256": "01f20d70709e541d27335ed22c20351eb2633eaa5fc33cb09a0d8fe306a8e1e3",
+          "byteSize": 12280
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T16:07:11.590Z"
+    },
+    {
+      "id": "category.travel.travel",
+      "entityType": "category",
+      "displayName": "Travel",
+      "pattern": "travel",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.travel.travel-32.webp",
+          "sha256": "5cc1a7ed5db2590e1da5ec58d231408f160881b6f2d3b7bfc50eb10d788d3c45",
+          "byteSize": 948
+        },
+        "64": {
+          "file": "category.travel.travel-64.webp",
+          "sha256": "fd6216b476de1491d2861d1cc40871da956ceace6a99e84e1a9e0da29d414a28",
+          "byteSize": 2454
+        },
+        "128": {
+          "file": "category.travel.travel-128.webp",
+          "sha256": "529d3f94d07ecb9d24f88eaecd56e930f14e45035554eac67072b28e269e041d",
+          "byteSize": 6618
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:41:19.781Z"
+    },
+    {
+      "id": "category.utilities.utilities",
+      "entityType": "category",
+      "displayName": "Utilities",
+      "pattern": "utilities",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "category.utilities.utilities-32.webp",
+          "sha256": "40b98d3947fd84d2d1bf544bfb2a56aeb5742afc74c0560ba716edbfc9983bcf",
+          "byteSize": 620
+        },
+        "64": {
+          "file": "category.utilities.utilities-64.webp",
+          "sha256": "510aab11eaed79339d9d90c77de9d4e1fe86c0f67aa6660149f424024567ed75",
+          "byteSize": 1368
+        },
+        "128": {
+          "file": "category.utilities.utilities-128.webp",
+          "sha256": "ca7cde9c3d2a6e08eb622f45a44a49438ec96d716a4a07ff6b79dbba5cf30965",
+          "byteSize": 2990
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:41:58.746Z"
+    },
+    {
+      "id": "financial_product.apple.apple",
+      "entityType": "financial_product",
+      "displayName": "Apple",
+      "pattern": "apple",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "financial_product.apple.apple-32.webp",
+          "sha256": "76e1394100209888a58e3a7a03df820db2de3884de2e14601b0cca8d9eb3970a",
+          "byteSize": 654
+        },
+        "64": {
+          "file": "financial_product.apple.apple-64.webp",
+          "sha256": "2af572be3189991c244092ca23b608bb3526a2d556d7bb3f6015e1483249b89f",
+          "byteSize": 1320
+        },
+        "128": {
+          "file": "financial_product.apple.apple-128.webp",
+          "sha256": "510a06d99e21bf4a63220a69115103f597c3efa3ce45b592c577648ef6a236bc",
+          "byteSize": 2890
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:41:21.147Z"
+    },
+    {
+      "id": "institution.amex.american-express",
+      "entityType": "institution",
+      "displayName": "Amex",
+      "pattern": "american express",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "institution.amex.american-express-32.webp",
+          "sha256": "167cdbea0e4485696500e6c078564ffe80ada4e815b6c41818455e35271e4b44",
+          "byteSize": 476
+        },
+        "64": {
+          "file": "institution.amex.american-express-64.webp",
+          "sha256": "fbf091728a02152c5ad42f9e46721c159f3b338c82283ee5d78b039018b1499c",
+          "byteSize": 946
+        },
+        "128": {
+          "file": "institution.amex.american-express-128.webp",
+          "sha256": "a5ca515a0a2594efda840182dc3297e110af8d52366fa36049b874c06933a047",
+          "byteSize": 1616
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:28:29.877Z"
+    },
+    {
+      "id": "institution.bank-of-america.bank-of-america",
+      "entityType": "institution",
+      "displayName": "Bank of America",
+      "pattern": "bank of america",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "institution.bank-of-america.bank-of-america-32.webp",
+          "sha256": "59454004e0076e81b4e7774f89e550216f5dd7278477348dc29fc01e2a3cd283",
+          "byteSize": 928
+        },
+        "64": {
+          "file": "institution.bank-of-america.bank-of-america-64.webp",
+          "sha256": "4287d9c84f47e85b2165d533d046ca3ed8879332bf2695c5eb711969b1b86120",
+          "byteSize": 2184
+        },
+        "128": {
+          "file": "institution.bank-of-america.bank-of-america-128.webp",
+          "sha256": "2d79cfbcf203e42a3d364b66dabf7597a2f23add5fd70d8f89e85a402e438ad3",
+          "byteSize": 5086
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:35:24.870Z"
+    },
+    {
+      "id": "institution.chase.chase",
+      "entityType": "institution",
+      "displayName": "Chase",
+      "pattern": "chase",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "institution.chase.chase-32.webp",
+          "sha256": "65d9089cbe2bd45e6a09bd4dd8817ffbe995f4f4c065c20f7fc62f59f46d2a85",
+          "byteSize": 758
+        },
+        "64": {
+          "file": "institution.chase.chase-64.webp",
+          "sha256": "47053003fbaa312894721f2f4055d23c5c5ee42241c34fb4e5f8dd9a1150cbae",
+          "byteSize": 1772
+        },
+        "128": {
+          "file": "institution.chase.chase-128.webp",
+          "sha256": "7312ff1d860914d0f0fb4e4978962853854bf93f4c2cad0ea42d98eaad1745c8",
+          "byteSize": 3416
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:32:33.973Z"
+    },
+    {
+      "id": "merchant.credit.credit",
+      "entityType": "merchant",
+      "displayName": "Credit",
+      "pattern": "credit",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "merchant.credit.credit-32.webp",
+          "sha256": "ad86263302482ddc66a223f6e2d11d9ec2dedaa7d6fd9daffd3bd10e650b0ee4",
+          "byteSize": 662
+        },
+        "64": {
+          "file": "merchant.credit.credit-64.webp",
+          "sha256": "679bcfd5f61485d0bfdb57a470b0c60a85c2f5864853538d0629387a5080b76a",
+          "byteSize": 1432
+        },
+        "128": {
+          "file": "merchant.credit.credit-128.webp",
+          "sha256": "ce2bcd0c2bbf573e8bad10e027c27285d01122b15ae32311feefa3e74e761d71",
+          "byteSize": 3058
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T16:24:56.705Z"
+    },
+    {
+      "id": "merchant.discord.discord",
+      "entityType": "merchant",
+      "displayName": "DISCORD",
+      "pattern": "discord",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "merchant.discord.discord-32.webp",
+          "sha256": "2f3c7ca64a97ed847847d3df33f6aeb1312e19df715b3d5f4c2582435db1e45a",
+          "byteSize": 678
+        },
+        "64": {
+          "file": "merchant.discord.discord-64.webp",
+          "sha256": "c12acf4f226b855f0528613cf315a0fdffe8fc46a0ec9ed5408d4bc8157ae01f",
+          "byteSize": 1652
+        },
+        "128": {
+          "file": "merchant.discord.discord-128.webp",
+          "sha256": "94304769dfca30147daf4ff2cb5304910c79298be60d708f269fe877389e4f32",
+          "byteSize": 4110
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T13:33:57.510Z"
+    },
+    {
+      "id": "merchant.netflix.netflix",
+      "entityType": "merchant",
+      "displayName": "NETFLIX",
+      "pattern": "netflix",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "merchant.netflix.netflix-32.webp",
+          "sha256": "fddbc6520ea9904d5016d53c770c5af1ea96633ab8ae2b9db7ad0c8463ff7b52",
+          "byteSize": 638
+        },
+        "64": {
+          "file": "merchant.netflix.netflix-64.webp",
+          "sha256": "a52cc26fd52999bdb46df0a7be27fc3dc56e8c8e1e35652cc16ffe3d75bfaf19",
+          "byteSize": 1110
+        },
+        "128": {
+          "file": "merchant.netflix.netflix-128.webp",
+          "sha256": "0abd35ec8999cf01abdc83fa8075df1a2af69778a70e6f28e722618090800893",
+          "byteSize": 2192
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:49:29.708Z"
+    },
+    {
+      "id": "merchant.spotify.spotify",
+      "entityType": "merchant",
+      "displayName": "SPOTIFY",
+      "pattern": "spotify",
+      "matchType": "contains",
+      "priority": 0,
+      "variants": {
+        "32": {
+          "file": "merchant.spotify.spotify-32.webp",
+          "sha256": "6d6dd124fb3ec71823fde6c896ac689b19b70cd281e13339a2abc247df7d2bf8",
+          "byteSize": 774
+        },
+        "64": {
+          "file": "merchant.spotify.spotify-64.webp",
+          "sha256": "9ddfac889237651e526c7aab98c35ae064b0941aed77d49177c023b59befe6e4",
+          "byteSize": 1918
+        },
+        "128": {
+          "file": "merchant.spotify.spotify-128.webp",
+          "sha256": "afda567237b2b9cbeed28d478bafb17149a2866e6c6fdc8401c269c6339528db",
+          "byteSize": 4598
+        }
+      },
+      "license": "Third-party or community-provided artwork; no trademark rights granted",
+      "source": "Bundled from an administrator-approved SimplerFinance v1 library submission",
+      "updatedAt": "2026-08-14T14:53:16.382Z"
+    }
+  ]
+}

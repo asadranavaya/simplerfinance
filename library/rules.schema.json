@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/budget-app/icon-rules.schema.json",
+  "title": "SimplerFinance shared icon rules",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "rules"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rules": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "entityType", "displayName", "pattern", "matchType", "priority", "variants", "license", "source", "updatedAt"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$" },
+          "entityType": { "enum": ["merchant", "institution", "financial_product", "category"] },
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "pattern": { "type": "string", "minLength": 3, "maxLength": 120 },
+          "matchType": { "enum": ["exact", "contains"] },
+          "priority": { "type": "integer", "minimum": -100, "maximum": 100 },
+          "variants": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["32", "64", "128"],
+            "properties": {
+              "32": { "$ref": "#/$defs/variant" },
+              "64": { "$ref": "#/$defs/variant" },
+              "128": { "$ref": "#/$defs/variant" }
+            }
+          },
+          "license": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "source": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256", "byteSize"],
+      "properties": {
+        "file": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,159}\\.webp$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "byteSize": { "type": "integer", "minimum": 1, "maximum": 204800 }
+      }
+    }
+  }
+}
