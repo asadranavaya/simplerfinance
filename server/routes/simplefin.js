@@ -79,6 +79,8 @@ function sanitizedProviderWarnings(accountSet) {
   return errors.slice(0, 20).map((warning) => ({
     code: String(warning?.code || 'unknown').slice(0, 80),
     message: sanitizeSimplefinError(warning?.msg || 'SimpleFIN reported a warning'),
+    accountId: warning?.account_id == null ? null : String(warning.account_id).slice(0, 500),
+    connectionId: warning?.conn_id == null ? null : String(warning.conn_id).slice(0, 500),
   }));
 }
 

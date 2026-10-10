@@ -19,6 +19,7 @@ const { reapplyTravelPlans } = require('./travelPlans');
 const { refreshCurrentNetWorth } = require('./netWorthProjection');
 const { nextScheduleAfterSuccess } = require('./simplefinSchedule');
 const { recordSimplefinSyncDigest } = require('./simplefinNotificationDigest');
+const { connectionIdsMatch } = require('./simplefinConnectionIssue');
 const { encryptCustomerValue } = require('./customerEncryption');
 const { isImportedExpenseForTransactions } = require('./simplefinDeletion');
 
@@ -74,13 +75,15 @@ function providerWarnings(accountSet) {
   return (Array.isArray(accountSet?.errlist) ? accountSet.errlist : []).slice(0, 20).map((warning) => ({
     code: String(warning?.code || 'unknown').slice(0, 80),
     message: sanitizeSimplefinError(warning?.msg || 'SimpleFIN reported a warning'),
+    accountId: warning?.account_id == null ? null : String(warning.account_id).slice(0, 500),
+    connectionId: warning?.conn_id == null ? null : String(warning.conn_id).slice(0, 500),
   }));
 }
 
 function deduplicateWarnings(warnings) {
   const unique = new Map();
   for (const warning of warnings) {
-    const key = `${String(warning?.code || '')}\0${String(warning?.message || '')}`;
+    const key = `${String(warning?.code || '')}\0${String(warning?.message || '')}\0${String(warning?.accountId || '')}\0${String(warning?.connectionId || '')}`;
     if (!unique.has(key)) unique.set(key, warning);
   }
   return [...unique.values()];
@@ -263,7 +266,7 @@ function accountResponseHasErrors(accountSet, remoteAccount) {
     const errorConnectionId = error?.conn_id == null ? '' : String(error.conn_id);
     if (!errorAccountId && !errorConnectionId) return true;
     if (errorAccountId) return errorAccountId === accountId;
-    return errorConnectionId === connectionId;
+    return connectionIdsMatch(errorConnectionId, connectionId);
   });
 }
 

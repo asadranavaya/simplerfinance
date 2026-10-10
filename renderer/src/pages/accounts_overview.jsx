@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useId } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
 
@@ -448,10 +449,21 @@ export default function AccountOverview() {
 }
 
 function ConnectionBadge({ simplefin }) {
+  const tooltipId = useId();
   if (!simplefin?.connected) return null;
+  const issue = simplefin.issue || (simplefin.isStale ? 'This account has not completed a recent SimpleFIN sync.' : null);
+  if (issue) {
+    return (
+      <span className="account-connection-badge issue" tabIndex={0} aria-describedby={tooltipId}>
+        <TriangleAlert size={13} strokeWidth={2.5} aria-hidden="true" />
+        Issue
+        <span className="account-connection-tooltip" id={tooltipId} role="tooltip">{issue}</span>
+      </span>
+    );
+  }
   return (
-    <span className={`account-connection-badge${simplefin.isStale ? ' stale' : ''}`} title={`Last sync: ${simplefin.lastSyncSucceededAt ? new Date(simplefin.lastSyncSucceededAt).toLocaleString() : 'Never'}`}>
-      <i /> {simplefin.isStale ? 'Stale' : 'Connected'}
+    <span className="account-connection-badge" title={`Last sync: ${simplefin.lastSyncSucceededAt ? new Date(simplefin.lastSyncSucceededAt).toLocaleString() : 'Never'}`}>
+      <i /> Connected
     </span>
   );
 }
