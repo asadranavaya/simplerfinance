@@ -8,7 +8,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { externalCategoryTooltip, ExternalTooltipCleanupPlugin } from '../util/externalChartTooltip';
 import { Doughnut } from 'react-chartjs-2';
-import { ChevronLeft, ChevronRight, StickyNote, Upload } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, StickyNote, Upload } from "lucide-react";
 import ImportModal from '../util/ImportCsv';
 import SplitPurchaseFields from '../components/SplitPurchaseFields';
 
@@ -59,6 +59,9 @@ export default function MonthlySpendingPage() {
   const [savingPurchaseNotes, setSavingPurchaseNotes] = useState(false);
   const [purchaseNotesError, setPurchaseNotesError] = useState('');
   const [purchaseNotesSaved, setPurchaseNotesSaved] = useState(false);
+  const [reminderDraft, setReminderDraft] = useState('');
+  const [reminderError, setReminderError] = useState('');
+  const [savingReminder, setSavingReminder] = useState(false);
   const [changingPeriod, setChangingPeriod] = useState(false);
 
   useEffect(() => {
@@ -84,12 +87,18 @@ export default function MonthlySpendingPage() {
   const purchaseInspectorEnabled = betaFeatures.includes('purchase_data_inspector');
   const showDiagnosticMetadata = purchaseDiagnostics?.data?.diagnosticsEnabled ?? purchaseInspectorEnabled;
   const openPurchaseDiagnostics = async (expense) => {
+    setReminderDraft('');
+    setReminderError('');
     setPurchaseNotesDraft(expense.notes || '');
     setPurchaseNotesError('');
     setPurchaseNotesSaved(false);
     setPurchaseDiagnostics({ expense, loading: true, error: '', data: null });
     try {
       const data = await api.getExpenseDiagnostics(expense.id);
+      if (data.purchase?.reminder) {
+        const date = new Date(data.purchase.reminder.dueAt);
+        setReminderDraft(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+      }
       setPurchaseNotesDraft(data.purchase?.notes || '');
       setPurchaseDiagnostics({ expense, loading: false, error: '', data });
     } catch (error) {
@@ -394,6 +403,23 @@ export default function MonthlySpendingPage() {
     } finally {
       setSavingPurchaseNotes(false);
     }
+  };
+
+  const savePurchaseReminder = async (remove = false) => {
+    if (!purchaseDiagnostics || savingReminder) return;
+    setSavingReminder(true);
+    setReminderError('');
+    try {
+      const date = new Date(reminderDraft);
+      if (!remove && (!reminderDraft || !Number.isFinite(date.getTime()))) throw new Error('Choose a reminder date and time.');
+      const { reminder } = await api.setPurchaseReminder(purchaseDiagnostics.expense.id, remove ? null : date.toISOString());
+      const updated = { ...purchaseDiagnostics.expense, reminder };
+      replaceMonthlyExpense(updated);
+      setPurchaseDiagnostics(current => current ? { ...current, expense: updated, data: { ...current.data, purchase: { ...current.data.purchase, reminder } } } : current);
+      if (remove) setReminderDraft('');
+    } catch (error) {
+      setReminderError(error.message || 'Unable to save this reminder.');
+    } finally { setSavingReminder(false); }
   };
 
   const addCategoryToExpense = async (expense, category) => {
@@ -830,7 +856,7 @@ export default function MonthlySpendingPage() {
                       aria-label={`View purchase details for ${expense.description}`}
                     >
                       <div className="expense-primary-copy">
-                        <span className="expense-merchant-copy">{expense.icon ? <img className="entity-icon" src={expense.icon.url} alt="" /> : <button type="button" className="entity-icon-fallback" title="Suggest a company icon" onClick={() => { setIconSubmissionError(''); setIconDraft({ entityType:'merchant', displayName:expense.description, pattern:expense.providerDescription || expense.description, exampleText:expense.providerDescription || expense.description }); }}>{expense.description.slice(0,1).toUpperCase()}</button>}<span className="text-black">{expense.description}</span>{Boolean(expense.notes?.trim()) && <span className="expense-note-indicator" title="This purchase has notes" aria-label="This purchase has notes"><StickyNote size={14} strokeWidth={2.2} aria-hidden="true" /></span>}</span>
+<span className="expense-merchant-copy">{expense.icon ? <img className="entity-icon" src={expense.icon.url} alt="" /> : <button type="button" className="entity-icon-fallback" title="Suggest a company icon" onClick={() => { setIconSubmissionError(''); setIconDraft({ entityType:'merchant', displayName:expense.description, pattern:expense.providerDescription || expense.description, exampleText:expense.providerDescription || expense.description }); }}>{expense.description.slice(0,1).toUpperCase()}</button>}<span className="text-black">{expense.description}</span>{Boolean(expense.notes?.trim()) && <span className="expense-note-indicator" title="This purchase has notes" aria-label="This purchase has notes"><StickyNote size={14} strokeWidth={2.2} aria-hidden="true" /></span>}{expense.reminder && <span className="expense-note-indicator" title={`Purchase reminder: ${new Date(expense.reminder.dueAt).toLocaleString()}`} aria-label="This purchase has a reminder"><Bell size={14} strokeWidth={2.2} aria-hidden="true" /></span>}</span>
                         {(expense.transactionTime || expense.pending) && <small className="expense-transaction-meta">
                           {expense.transactionTime && <time dateTime={expense.transactionTime}>{expense.transactionTimePrecision === 'time'
                             ? new Date(expense.transactionTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -1050,6 +1076,20 @@ export default function MonthlySpendingPage() {
                   <div className="purchase-notes-actions">
                     <span>{purchaseNotesError ? <b role="alert">{purchaseNotesError}</b> : purchaseNotesSaved ? <em role="status">Notes saved</em> : null}</span>
                     <button type="submit" disabled={savingPurchaseNotes}>{savingPurchaseNotes ? 'Saving…' : 'Save notes'}</button>
+                  </div>
+                </form>
+              </section>
+              <section className="purchase-notes-section">
+                <form onSubmit={event => { event.preventDefault(); savePurchaseReminder(); }}>
+                  <h3>Purchase reminder</h3>
+                  <p>Check back for a refund, return, or anything else. The reminder will appear in your notifications.</p>
+                  <label>Remind me on <input type="datetime-local" value={reminderDraft} onChange={event => setReminderDraft(event.target.value)} required /></label>
+                  <p><small>Times use your local time zone. Add details in the purchase notes above.</small></p>
+                  {purchaseDiagnostics.data.purchase.reminder && <p role="status">{purchaseDiagnostics.data.purchase.reminder.deliveredAt ? 'Reminder delivered' : 'Reminder set'} for {new Date(purchaseDiagnostics.data.purchase.reminder.dueAt).toLocaleString()}.</p>}
+                  <div className="purchase-notes-actions">
+                    <span>{reminderError && <b role="alert">{reminderError}</b>}</span>
+                    {purchaseDiagnostics.data.purchase.reminder && <button type="button" disabled={savingReminder} onClick={() => savePurchaseReminder(true)}>Remove reminder</button>}
+                    <button type="submit" disabled={savingReminder}>{savingReminder ? 'Saving…' : purchaseDiagnostics.data.purchase.reminder ? 'Update reminder' : 'Set reminder'}</button>
                   </div>
                 </form>
               </section>

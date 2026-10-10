@@ -14,6 +14,27 @@ const { decryptCustomerValue } = require('../lib/customerEncryption');
 const { FEATURES, enabledFeatures, hasFeature } = require('../lib/featureFlags');
 
 const router = Router();
+const { getPurchaseReminder } = require('../lib/purchaseReminders');
+
+router.put('/expense/:id/reminder', (req, res) => {
+  const id = cleanId(req.params.id, 'Expense identifier');
+  if (id.error) return res.status(400).json({ error: id.error });
+  const expense = sqlite.prepare(`SELECT e.id FROM expenses e JOIN monthly_spending s ON s.id=e.spending_id
+    WHERE e.id=? AND s.user_id=? AND e.hidden_at IS NULL`).get(id.value, req.user.accountId);
+  if (!expense) return res.status(404).json({ error: 'Purchase not found.' });
+  if (!hasOnlyKeys(req.body, ['dueAt'])) return res.status(400).json({ error: 'Only a reminder date is supported.' });
+  if (req.body.dueAt === null) {
+    sqlite.prepare('DELETE FROM purchase_reminders WHERE expense_id=? AND account_id=?').run(id.value, req.user.accountId);
+    return res.json({ reminder: null });
+  }
+  const due = typeof req.body.dueAt === 'string' ? new Date(req.body.dueAt) : new Date(NaN);
+  if (!Number.isFinite(due.getTime()) || due <= new Date() || due.getUTCFullYear() > 2100) {
+    return res.status(400).json({ error: 'Choose a valid future reminder date and time.' });
+  }
+  sqlite.prepare(`INSERT INTO purchase_reminders(expense_id,account_id,due_at) VALUES(?,?,?)
+    ON CONFLICT(expense_id) DO UPDATE SET due_at=excluded.due_at, delivered_at=NULL`).run(id.value, req.user.accountId, due.toISOString());
+  res.json({ reminder: getPurchaseReminder(id.value) });
+});
 
 function parseJson(value, fallback = {}) {
   try { return value ? JSON.parse(value) : fallback; } catch { return fallback; }
@@ -134,6 +155,7 @@ router.get('/expense/:id/diagnostics', (req, res) => {
       category: expense.category,
       tags: normalizeExpenseCategories(metadata).categories,
       notes: metadata.notes || '',
+      reminder: getPurchaseReminder(expense.id),
       reportingCurrency: metadata.reportingCurrency || 'USD',
       ...(diagnosticsEnabled ? { metadata } : {}),
     },
@@ -367,6 +389,7 @@ function deserializeExpense(row) {
   return {
     ...rest,
     ...metadata,
+    reminder: getPurchaseReminder(row.id),
     originalAmount: revealed.amount,
     amount: paidAmount,
     simplefinLinked: Boolean(linkedSimplefinTransaction),

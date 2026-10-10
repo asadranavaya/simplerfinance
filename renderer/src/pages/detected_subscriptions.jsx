@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Link2, X } from 'lucide-react';
+import { ArrowLeft, Bell, CalendarDays, ChevronLeft, ChevronRight, Link2, X } from 'lucide-react';
 import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
+import { useUpcomingEvents } from '../util/useUpcomingEvents';
 import { nextEstimatedPayment, projectedDateForMonth, utcDate } from '../util/subscriptionCalendar';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -18,6 +19,11 @@ function displayDate(value) {
 
 export default function DetectedSubscriptionsPage() {
   const { account } = useAccount();
+  const upcomingEvents = useUpcomingEvents(account?.id);
+  const reminderDateKey = value => {
+    const date = new Date(value);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastDetection, setLastDetection] = useState(null);
@@ -216,9 +222,11 @@ export default function DetectedSubscriptionsPage() {
                   {calendarDays.map(day => {
                     const dayKey = day.toISOString().slice(0, 10);
                     const dayEvents = monthEvents.filter(event => event.projected.toISOString().slice(0, 10) === dayKey);
+                    const dayReminders = upcomingEvents.events.filter(event => reminderDateKey(event.dueAt) === dayKey);
                     const outside = `${day.getUTCFullYear()}-${day.getUTCMonth()}` !== currentMonthKey;
-                    return <button type="button" key={dayKey} className={`subscription-calendar-day${outside ? ' outside' : ''}${dayKey === todayKey ? ' today' : ''}${selectedDay === dayKey ? ' selected' : ''}${dayEvents.length ? ' has-events' : ''}`} onClick={() => setSelectedDay(dayKey)}>
+return <button type="button" key={dayKey} className={`subscription-calendar-day${outside ? ' outside' : ''}${dayKey === todayKey ? ' today' : ''}${selectedDay === dayKey ? ' selected' : ''}${(dayEvents.length || dayReminders.length) ? ' has-events' : ''}`} onClick={() => setSelectedDay(dayKey)}>
                       <span>{day.getUTCDate()}</span>
+                      {dayReminders.length > 0 && <span className="purchase-calendar-reminder" title={dayReminders.map(event => `${event.description} · ${new Date(event.dueAt).toLocaleTimeString()}`).join('\n')} aria-label={`${dayReminders.length} purchase reminder${dayReminders.length === 1 ? '' : 's'}`}><Bell size={16} />{dayReminders.length > 1 && <small>{dayReminders.length}</small>}</span>}
                       <div className="subscription-calendar-icon-stack" aria-label={dayEvents.map(event => event.description).join(', ')}>{dayEvents.slice(0, 4).map(event => <span key={event.id} title={`${event.description} · ${money(event.averageAmount)}`}>{event.icon ? <img src={event.icon.url} alt=""/> : <b>{event.description.slice(0,1).toUpperCase()}</b>}</span>)}{dayEvents.length > 4 && <small title={`${dayEvents.length - 4} additional payments`}>+{dayEvents.length - 4}</small>}</div>
                     </button>;
                   })}
@@ -228,6 +236,8 @@ export default function DetectedSubscriptionsPage() {
               <aside className="content-card subscription-calendar-agenda">
                 <div className="subscription-agenda-heading"><small>{selectedDay ? displayDate(`${selectedDay}T00:00:00Z`) : 'Next estimated payments'}</small><strong>{selectedDay ? money(selectedEvents.reduce((sum, item) => sum + item.averageAmount, 0)) : money(upcoming.slice(0, 5).reduce((sum, item) => sum + item.averageAmount, 0))}</strong></div>
                 <div className="subscription-agenda-list">
+                  {upcomingEvents.error && <p role="alert">{upcomingEvents.error}</p>}
+                  {upcomingEvents.events.filter(event => !selectedDay || reminderDateKey(event.dueAt) === selectedDay).slice(0, selectedDay ? undefined : 5).map(event => <article key={`reminder-${event.expenseId}`}><span className="subscription-agenda-date"><Bell size={18} /></span><div><strong>{event.description}</strong><small>Purchase reminder · {new Date(event.dueAt).toLocaleString()}</small></div></article>)}
                   {(selectedDay ? selectedEvents : upcoming.slice(0, 5)).map(item => {
                     const paymentDate = item.projected || item.nextPayment;
                     return <article key={item.id}><span className="subscription-agenda-date"><b>{paymentDate.getUTCDate()}</b><small>{paymentDate.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</small></span><div><strong>{item.description}</strong><small>Estimated monthly payment</small></div><b>{money(item.averageAmount)}</b></article>;

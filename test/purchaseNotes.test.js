@@ -8,6 +8,7 @@ const { db, sqlite } = require('../server/db');
 const { accounts, accountFeatureFlags, creditCards, expenses, monthlySpending, users } = require('../server/db/schema');
 const { protectExpenseRecord } = require('../server/lib/customerDataFields');
 const { JWT_SECRET } = require('../server/middleware/auth');
+const { deliverPurchaseReminders } = require('../server/lib/purchaseReminders');
 
 async function withServer(run) {
   const server = app.listen(0);
@@ -69,12 +70,42 @@ test('purchase notes are available to owners while diagnostic metadata remains f
     assert.equal(savedResponse.status, 200);
     assert.equal((await savedResponse.json()).notes, 'Updated private note');
 
+    const reminderUrl = `${base}/api/spending/expense/${expenseId}/reminder`;
+    const dueAt = new Date(Date.now() + 60000).toISOString();
+    const setReminder = (value, requestHeaders = headers) => fetch(reminderUrl, {
+      method: 'PUT', headers: requestHeaders, body: JSON.stringify({ dueAt: value }),
+    });
+    assert.equal((await setReminder(dueAt, { ...headers, cookie: `token=${otherToken}` })).status, 404);
+    assert.equal((await setReminder('invalid')).status, 400);
+    assert.equal((await setReminder(new Date(Date.now() - 60000).toISOString())).status, 400);
+    const scheduled = await setReminder(dueAt);
+    assert.equal(scheduled.status, 200);
+    assert.equal((await scheduled.json()).reminder.dueAt, dueAt);
+    const upcoming = await (await fetch(`${base}/api/notifications/upcoming`, { headers })).json();
+    assert.deepEqual(upcoming.events, [{ expenseId, description: 'Dinner', notes: 'Updated private note', dueAt }]);
+    const otherUpcoming = await (await fetch(`${base}/api/notifications/upcoming`, { headers: { cookie: `token=${otherToken}` } })).json();
+    assert.deepEqual(otherUpcoming.events, []);
+    assert.equal(deliverPurchaseReminders(new Date(Date.now())), 0);
+    assert.equal(deliverPurchaseReminders(new Date(Date.now() + 120000)), 1);
+    assert.equal(deliverPurchaseReminders(new Date(Date.now() + 180000)), 0);
+    assert.deepEqual((await (await fetch(`${base}/api/notifications/upcoming`, { headers })).json()).events, []);
+    const notices = await (await fetch(`${base}/api/notifications`, { headers })).json();
+    assert.equal(notices.notifications.filter(item => item.metadata.expenseId === expenseId).length, 1);
+    assert.equal(notices.notifications.find(item => item.metadata.expenseId === expenseId).message, 'Updated private note');
+    const others = await (await fetch(`${base}/api/notifications`, { headers: { cookie: `token=${otherToken}` } })).json();
+    assert.equal(others.notifications.length, 0);
+    assert.equal((await setReminder(dueAt)).status, 200);
+    assert.equal((await setReminder(null)).status, 200);
+    assert.deepEqual((await (await fetch(`${base}/api/notifications/upcoming`, { headers })).json()).events, []);
+    assert.equal(deliverPurchaseReminders(new Date(Date.now() + 180000)), 0);
+
     db.insert(accountFeatureFlags).values({ accountId: ownerAccountId, featureKey: 'purchase_data_inspector', enabledAt: now, enabledBy: null }).run();
     const diagnosticResponse = await fetch(`${base}/api/spending/expense/${expenseId}/diagnostics`, { headers });
     assert.equal(diagnosticResponse.status, 200);
     const diagnostic = await diagnosticResponse.json();
     assert.equal(diagnostic.diagnosticsEnabled, true);
     assert.equal(diagnostic.purchase.notes, 'Updated private note');
+    assert.equal(diagnostic.purchase.reminder, null);
     assert.equal(diagnostic.purchase.metadata.internalMarker, 'restricted');
     assert.equal(diagnostic.simplefin, null);
   });

@@ -4,11 +4,22 @@ import { useAccount } from '../util/AccountContext';
 import { useAuth } from '../util/AuthContext';
 import { api } from '../util/api';
 import { useTheme } from '../util/ThemeContext';
-import { ArrowLeft, ChevronDown, History, Link2, Unlink } from 'lucide-react';
+import { useUpcomingEvents } from '../util/useUpcomingEvents';
+import { ArrowLeft, ChevronDown, History, Link2, Unlink, X } from 'lucide-react';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { account } = useAccount();
+  const upcomingEvents = useUpcomingEvents(account?.id);
+  const [removingReminderId, setRemovingReminderId] = useState(null);
+  const [reminderRemovalError, setReminderRemovalError] = useState('');
+  const removeUpcomingReminder = async expenseId => {
+    setRemovingReminderId(expenseId);
+    setReminderRemovalError('');
+    try { await upcomingEvents.removeReminder(expenseId); }
+    catch (error) { setReminderRemovalError(error.message || 'Unable to remove this reminder.'); }
+    finally { setRemovingReminderId(null); }
+  };
   const { user, setUser, logout } = useAuth();
   const { isDarkMode, toggleTheme, colorTheme, setColorTheme } = useTheme();
 
@@ -771,6 +782,7 @@ export default function SettingsPage() {
             </div>
             <div className="settings-hub-grid">
               <SettingsMenuCard icon="👤" title="Profile name" detail={account?.name || 'Set your display name'} onClick={() => setActiveSettingsPanel('profile')} />
+              <SettingsMenuCard icon="🔔" title="Upcoming events" detail={`${upcomingEvents.events.length} purchase reminder${upcomingEvents.events.length === 1 ? '' : 's'}`} onClick={() => setActiveSettingsPanel('upcoming')} />
               {user?.role !== 'admin' && <SettingsMenuCard icon="💼" title="Financial profile" detail={financialProfile?.yearlyIncome ? `$${Number(financialProfile.yearlyIncome).toLocaleString()} yearly income` : 'Set income and savings targets'} onClick={() => setActiveSettingsPanel('financial')} />}
               <SettingsMenuCard icon="✉️" title="Email address" detail={user?.email || 'Manage your sign-in email'} onClick={() => setActiveSettingsPanel('email')} />
               <SettingsMenuCard icon="🔒" title="Password" detail="Update your account password" onClick={() => setActiveSettingsPanel('password')} />
@@ -1130,6 +1142,17 @@ export default function SettingsPage() {
         </section>
       )}
 
+      {activeSettingsPanel === 'upcoming' && <section className="full-width-card settings-focus-card">
+        <h2>Upcoming events</h2>
+        <p>Scheduled purchase reminders, shown in your local time zone.</p>
+        {upcomingEvents.error && <p role="alert">{upcomingEvents.error}</p>}
+        {reminderRemovalError && <p role="alert">{reminderRemovalError}</p>}
+        {upcomingEvents.loading ? <p>Loading upcoming events…</p> : !upcomingEvents.error && !upcomingEvents.events.length ? <p>No upcoming purchase reminders. Set one by clicking a purchase.</p> : null}
+        <div className="travel-plan-list">{upcomingEvents.events.map(event => <article className="travel-plan-link upcoming-event" key={event.expenseId}>
+          <div className="upcoming-event-copy"><strong>🔔 {event.description}</strong><time dateTime={event.dueAt}>{new Date(event.dueAt).toLocaleString()}</time>{event.notes?.trim() && <small className="upcoming-event-note">{event.notes}</small>}</div>
+          <button type="button" className="upcoming-event-remove" title="Remove scheduled reminder (keeps purchase notes)" aria-label={`Remove reminder for ${event.description}`} disabled={removingReminderId !== null} onClick={() => removeUpcomingReminder(event.expenseId)}><X size={16} aria-hidden="true" /></button>
+        </article>)}</div>
+      </section>}
       {user?.role !== 'admin' && activeSettingsPanel === 'splits' && <section className="full-width-card settings-focus-card split-people-card">
         <h2>👥 Split purchases</h2>
         <p>Add people you commonly share purchases with. Names are encrypted with your customer key.</p>
@@ -1909,6 +1932,7 @@ function classificationLabel(value) {
 
 function settingsPanelTitle(panel) {
   return ({
+    upcoming: 'Upcoming events',
     profile: 'Profile name', financial: 'Financial profile', email: 'Email address', password: 'Password',
     security: 'Two-factor authentication', appearance: 'Appearance', categorization: 'Categorization rules', splits: 'Split purchases', travel: 'Travel', simplefin: 'SimpleFIN Bridge',
   })[panel] || 'Settings';

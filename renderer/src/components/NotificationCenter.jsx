@@ -105,7 +105,7 @@ export default function NotificationCenter() {
             {loading ? <div className="notification-empty">Loading notifications…</div> : notifications.length ? notifications.map(notification => (
               <button type="button" className={`notification-item ${notification.type}${notification.readAt ? '' : ' unread'}`} key={notification.id} onClick={() => markRead(notification)}>
                 <span className="notification-type-icon">{typeIcon(notification.type)}</span>
-                <span className="notification-copy"><strong>{notification.title}</strong><span>{notification.message}</span><time dateTime={notification.createdAt}>{formatNotificationTime(notification.createdAt)}</time></span>
+                <span className="notification-copy"><strong>{notification.title}</strong>{notification.metadata?.purchaseDescription && <span>{notification.metadata.purchaseDescription}</span>}<span style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{notification.message}</span><time dateTime={notification.createdAt}>{formatNotificationTime(notification.createdAt)}</time></span>
                 {!notification.readAt && <i aria-label="Unread" />}
               </button>
             )) : <div className="notification-empty"><Bell size={28} /><strong>No notifications yet</strong><span>Account and server updates will appear here.</span></div>}

@@ -103,6 +103,7 @@ export const api = {
 
   // ── Notifications ────────────────────────────────────────────────────────
   getNotifications: () => get('/notifications'),
+  getUpcomingEvents: () => get('/notifications/upcoming'),
   markNotificationRead: (id) => patch(`/notifications/${encodeURIComponent(id)}/read`),
   markAllNotificationsRead: () => patch('/notifications/read-all'),
 
@@ -180,6 +181,7 @@ export const api = {
   deleteExpense: (userId, year, month, cardId, expenseId) =>
     del(`/spending/expense/${expenseId}`),
   updateExpenseSplit: (expenseId, mode, allocations) => put(`/spending/expense/${encodeURIComponent(expenseId)}/split`, { mode, allocations }),
+  setPurchaseReminder: (expenseId, dueAt) => put(`/spending/expense/${encodeURIComponent(expenseId)}/reminder`, { dueAt }),
 
   // ── Financial Profile & Goals ─────────────────────────────────────────────
   getFinancialProfile:    ()              => get('/profiles/me'),

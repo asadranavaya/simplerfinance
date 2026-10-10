@@ -618,6 +618,13 @@ for (const sql of [
 }
 
 // Seed the bundled, checksummed v1 icon library after the icon tables exist.
+sqlite.exec(`CREATE TABLE IF NOT EXISTS purchase_reminders (
+  expense_id TEXT PRIMARY KEY REFERENCES expenses(id) ON DELETE CASCADE,
+  account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  due_at TEXT NOT NULL,
+  delivered_at TEXT
+);
+CREATE INDEX IF NOT EXISTS purchase_reminders_due_idx ON purchase_reminders(due_at) WHERE delivered_at IS NULL;`);
 // Equivalent deployment rules are preserved and take precedence.
 require('../lib/sharedIconLibrary').seedSharedIconLibrary(sqlite);
 
