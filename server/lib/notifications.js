@@ -1,6 +1,8 @@
 const crypto = require('crypto');
-const { sqlite } = require('../db');
-const { protectNotificationMetadata, revealNotificationMetadata } = require('./customerDataFields');
+const { sqlite, db } = require('../db');
+const { expenses } = require('../db/schema');
+const { eq } = require('drizzle-orm');
+const { protectNotificationMetadata, revealNotificationMetadata, revealExpenseRecord } = require('./customerDataFields');
 
 const subscribers = new Map();
 const VALID_TYPES = new Set(['info', 'success', 'warning', 'security']);
@@ -8,11 +10,21 @@ const VALID_TYPES = new Set(['info', 'success', 'warning', 'security']);
 function serializeNotification(row) {
   let metadata = {};
   try { metadata = JSON.parse(revealNotificationMetadata(sqlite, row.account_id, row.metadata) || '{}'); } catch (_) { /* Invalid legacy metadata stays empty. */ }
+  let message = row.message;
+  if (row.title === 'Purchase reminder' && typeof metadata.expenseId === 'string') {
+    const owned = sqlite.prepare(`SELECT e.id FROM expenses e JOIN monthly_spending s ON s.id=e.spending_id
+      WHERE e.id=? AND s.user_id=? AND e.hidden_at IS NULL`).get(metadata.expenseId, row.account_id);
+    if (owned) {
+      const purchase = revealExpenseRecord(sqlite, db.select().from(expenses).where(eq(expenses.id, owned.id)).get());
+      const notes = JSON.parse(purchase.data || '{}').notes;
+      if (typeof notes === 'string' && notes.trim()) message = notes;
+    }
+  }
   return {
     id: row.id,
     type: row.type,
     title: row.title,
-    message: row.message,
+    message,
     metadata,
     createdAt: row.created_at,
     readAt: row.read_at,

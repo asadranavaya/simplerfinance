@@ -7051,3 +7051,13 @@ canvas {
     padding-left: max(14px, env(safe-area-inset-left)) !important;
   }
 }
+.purchase-calendar-reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-primary, currentColor);
+}
+.travel-plan-list article.upcoming-event { position: relative; align-items: flex-start; flex-direction: row; }
+.travel-plan-list article.upcoming-event > .upcoming-event-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; flex: 1; }
+.upcoming-event-note { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8rem; opacity: 0.75; margin-top: 6px; }
+.upcoming-event .upcoming-event-remove { flex-shrink: 0; padding: 6px; display: inline-flex; align-items: center; justify-content: center; margin-left: auto; }

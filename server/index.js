@@ -135,6 +135,7 @@ if (require.main === module) {
     startSimplefinScheduler();
     startFxScheduler();
     startOperationsMaintenance();
+    require('./lib/purchaseReminders').startPurchaseReminderScheduler();
   });
 }
 
