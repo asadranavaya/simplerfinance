@@ -20,6 +20,9 @@ router.get('/', (req, res) => {
 
   res.json({
     value: projection.value,
+    trackedValue: projection.trackedValue,
+    hasUntrackedAccounts: projection.hasUntrackedAccounts,
+    untrackedAccountCount: projection.untrackedAccountCount,
     changeAmount,
     changePercent,
     hasComparison: previous !== null,

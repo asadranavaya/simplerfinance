@@ -579,6 +579,7 @@ try { sqlite.exec(`ALTER TABLE simplefin_notification_digests ADD COLUMN warning
 
 for (const table of ['credit_cards', 'bank_accounts', 'trading_accounts']) {
   try { sqlite.exec(`ALTER TABLE ${table} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1`); } catch (_) {}
+  try { sqlite.exec(`ALTER TABLE ${table} ADD COLUMN include_in_net_worth INTEGER NOT NULL DEFAULT 1`); } catch (_) {}
   try { sqlite.exec(`ALTER TABLE ${table} ADD COLUMN closed_at TEXT`); } catch (_) {}
 }
 

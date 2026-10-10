@@ -168,6 +168,7 @@ export const api = {
   addTradingAccount:    (account, updateId) => post('/trading-accounts', { ...account, updateId }),
   deleteTradingAccount: (account)           => del(`/trading-accounts/${account.id}`),
   setFinancialAccountStatus: (type, id, isActive) => patch(`/financial-accounts/${type}/${encodeURIComponent(id)}/status`, { isActive }),
+  setFinancialAccountNetWorthInclusion: (type, id, included) => patch(`/financial-accounts/${type}/${encodeURIComponent(id)}/net-worth`, { included }),
 
   // ── Spending & Expenses ───────────────────────────────────────────────────
   getAllSpending: ()                           => get('/spending'),

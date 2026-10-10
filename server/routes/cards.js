@@ -12,6 +12,23 @@ const { resolveAccountIcon } = require('../lib/iconResolver');
 const router = Router();
 const accountTables = { credit_card: creditCards, bank: bankAccounts, trading: tradingAccounts };
 
+// Account-scoped net-worth tracking preference. New and existing accounts
+// default to included; this endpoint only stores an explicit opt-out.
+router.patch('/financial-accounts/:type/:id/net-worth', (req, res) => {
+  if (!hasOnlyKeys(req.body, ['included']) || typeof req.body.included !== 'boolean') {
+    return res.status(400).json({ error: 'Net worth inclusion must be true or false.' });
+  }
+  const table = accountTables[req.params.type];
+  if (!table) return res.status(400).json({ error: 'Choose a valid financial account type.' });
+  const id = cleanId(req.params.id, 'Account identifier');
+  if (id.error) return res.status(400).json({ error: id.error });
+  const owned = and(eq(table.id, id.value), eq(table.userId, req.user.accountId));
+  const existing = db.select().from(table).where(owned).get();
+  if (!existing) return res.status(404).json({ error: 'Financial account not found.' });
+  db.update(table).set({ includeInNetWorth: req.body.included }).where(owned).run();
+  res.json(projectRow(db.select().from(table).where(owned).get(), req.params.type, req.user.accountId));
+});
+
 // Reversible close/reactivate operation shared by every financial account.
 router.patch('/financial-accounts/:type/:id/status', (req, res) => {
   if (!hasOnlyKeys(req.body, ['isActive']) || typeof req.body.isActive !== 'boolean') {

@@ -17,6 +17,8 @@ export default function AccountOverview() {
   const [accountError, setAccountError] = useState('');
   const [closedPanelOpen, setClosedPanelOpen] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
+  const [netWorthAccount, setNetWorthAccount] = useState(null);
+  const [updatingNetWorth, setUpdatingNetWorth] = useState(false);
 
   const loadCurrentMonthSpending = useCallback(async (cards) => {
     if (api && account?.id && cards.length > 0) {
@@ -94,6 +96,32 @@ export default function AccountOverview() {
     } else if (type === 'trading') {
       setFormData({ ...formData, brokerName: account.brokerName || account.name, balance: account.balance, simplefin: account.simplefin });
       setUpdateId(account.id);
+    }
+  };
+
+  const openNetWorthPreference = (type, financialAccount) => {
+    setAccountError('');
+    setNetWorthAccount({
+      type,
+      id: financialAccount.id,
+      name: financialAccount.nickname || financialAccount.bankName || financialAccount.brokerName || financialAccount.name,
+      included: financialAccount.includeInNetWorth !== false,
+    });
+  };
+
+  const setNetWorthInclusion = async (included) => {
+    if (!netWorthAccount || updatingNetWorth) return;
+    setUpdatingNetWorth(true);
+    setAccountError('');
+    try {
+      await api.setFinancialAccountNetWorthInclusion(netWorthAccount.type, netWorthAccount.id, included);
+      setNetWorthAccount(current => current ? { ...current, included } : current);
+      await loadAccounts();
+      window.dispatchEvent(new CustomEvent('budget:net-worth-updated'));
+    } catch (err) {
+      setAccountError(err.message || 'Unable to update net worth tracking.');
+    } finally {
+      setUpdatingNetWorth(false);
     }
   };
 
@@ -179,7 +207,7 @@ export default function AccountOverview() {
           <button onClick={() => handleAddAccount('credit')} className="btn-primary">➕ Add Card</button>
         </div>
         {activeCreditCards.map((card) => (
-          <div key={card.id} className="account-item">
+          <div key={card.id} className="account-item account-item-selectable" role="button" tabIndex={0} onClick={() => openNetWorthPreference('credit_card', card)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openNetWorthPreference('credit_card', card); } }} aria-label={`Configure net worth tracking for ${card.nickname || card.name}`}>
             <div className="account-projected-copy">
               <strong className="account-item-name">{card.icon && <img className="entity-icon" src={card.icon.url} alt="" />} {card.nickname || card.name}</strong>
               <span className="account-item-detail">• {card.institution || card.simplefin?.institutionName || 'Institution'}</span>
@@ -192,7 +220,7 @@ export default function AccountOverview() {
                   : `$${(cardSpending[card.id] || 0).toFixed(2)}`}
                 <small className="account-balance-caption">{card.simplefin?.connected ? 'Provider balance' : 'This month'}</small>
               </div>
-              <button type="button" onClick={() => setAccountStatus('credit_card', card, false)} className="account-close-button" disabled={updatingStatusId === card.id}>Close</button>
+              <button type="button" onClick={(event) => { event.stopPropagation(); setAccountStatus('credit_card', card, false); }} className="account-close-button" disabled={updatingStatusId === card.id}>Close</button>
             </div>
           </div>
         ))}
@@ -210,7 +238,7 @@ export default function AccountOverview() {
           <button onClick={() => handleAddAccount('bank')} className="btn-primary">➕ Add Account</button>
         </div>
         {activeBankAccounts.map((bank) => (
-          <div key={bank.id} className="account-item">
+          <div key={bank.id} className="account-item account-item-selectable" role="button" tabIndex={0} onClick={() => openNetWorthPreference('bank', bank)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openNetWorthPreference('bank', bank); } }} aria-label={`Configure net worth tracking for ${bank.bankName || bank.name}`}>
             <div className="account-item-copy">
               <strong className="account-item-name">{bank.icon && <img className="entity-icon" src={bank.icon.url} alt="" />} {bank.bankName || bank.name}</strong>
               <span className="account-item-detail">• {formatAccountMoney(bank.balance, bank.simplefin?.currency || 'USD')}</span>
@@ -218,14 +246,14 @@ export default function AccountOverview() {
             </div>
             <div className="expense-actions">
               <button
-                onClick={() => handleUpdateAccount('bank', bank)}
+                onClick={(event) => { event.stopPropagation(); handleUpdateAccount('bank', bank); }}
                 className="goal-icon-btn"
                 title="Edit account"
               >
                 ✏️
               </button>
               <button
-                onClick={() => setAccountStatus('bank', bank, false)}
+                onClick={(event) => { event.stopPropagation(); setAccountStatus('bank', bank, false); }}
                 className="account-close-button"
                 title="Close account"
                 disabled={updatingStatusId === bank.id}
@@ -249,7 +277,7 @@ export default function AccountOverview() {
           <button onClick={() => handleAddAccount('trading')} className="btn-primary">➕ Add Account</button>
         </div>
         {activeTradingAccounts.map((trading) => (
-          <div key={trading.id} className="account-item">
+          <div key={trading.id} className="account-item account-item-selectable" role="button" tabIndex={0} onClick={() => openNetWorthPreference('trading', trading)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openNetWorthPreference('trading', trading); } }} aria-label={`Configure net worth tracking for ${trading.brokerName || trading.name}`}>
             <div className="account-item-copy">
               <strong className="account-item-name">{trading.brokerName || trading.name}</strong>
               <span className="account-item-detail">• {formatAccountMoney(trading.balance, trading.simplefin?.currency || 'USD')}</span>
@@ -257,14 +285,14 @@ export default function AccountOverview() {
             </div>
             <div className="expense-actions">
               <button
-                onClick={() => handleUpdateAccount('trading', trading)}
+                onClick={(event) => { event.stopPropagation(); handleUpdateAccount('trading', trading); }}
                 className="goal-icon-btn"
                 title="Edit account"
               >
                 ✏️
               </button>
               <button
-                onClick={() => setAccountStatus('trading', trading, false)}
+                onClick={(event) => { event.stopPropagation(); setAccountStatus('trading', trading, false); }}
                 className="account-close-button"
                 title="Close account"
                 disabled={updatingStatusId === trading.id}
@@ -388,6 +416,33 @@ export default function AccountOverview() {
         />,
         formData.simplefin?.connected && <p key="balance-source" className="account-provider-note">Balance is synchronized by SimpleFIN. You can still edit the account name.</p>
       ])}
+
+      {netWorthAccount && (
+        <div className="modal-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setNetWorthAccount(null); }}>
+          <div className="modal-content net-worth-preference-modal" role="dialog" aria-modal="true" aria-labelledby="net-worth-preference-title">
+            <div className="net-worth-preference-heading">
+              <div>
+                <span>Net worth tracking</span>
+                <h3 id="net-worth-preference-title">{netWorthAccount.name}</h3>
+              </div>
+              <button type="button" className="net-worth-modal-close" onClick={() => setNetWorthAccount(null)} aria-label="Close">×</button>
+            </div>
+            <p>Choose whether this account contributes to your tracked-account total. The main net worth figure will continue to show every active account.</p>
+            <div className="net-worth-preference-control">
+              <div>
+                <strong>Include in tracked net worth</strong>
+                <small>{netWorthAccount.included ? 'Included in your tracked total' : 'Excluded from your tracked total'}</small>
+              </div>
+              <label className="appearance-switch">
+                <input type="checkbox" checked={netWorthAccount.included} disabled={updatingNetWorth} onChange={(event) => setNetWorthInclusion(event.target.checked)} />
+                <span aria-hidden="true" />
+                <em>{netWorthAccount.included ? 'On' : 'Off'}</em>
+              </label>
+            </div>
+            <button type="button" className="net-worth-preference-done" onClick={() => setNetWorthAccount(null)} disabled={updatingNetWorth}>{updatingNetWorth ? 'Saving…' : 'Done'}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

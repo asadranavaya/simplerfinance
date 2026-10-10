@@ -53,7 +53,12 @@ export default function Sidebar({ isMobile, onClose }) {
     };
     loadNetWorth();
     const refreshInterval = window.setInterval(loadNetWorth, 5 * 60 * 1000);
-    return () => { cancelled = true; window.clearInterval(refreshInterval); };
+    window.addEventListener('budget:net-worth-updated', loadNetWorth);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('budget:net-worth-updated', loadNetWorth);
+    };
   }, [account, isAdmin, location.pathname]);
 
   useEffect(() => {
@@ -139,6 +144,12 @@ export default function Sidebar({ isMobile, onClose }) {
           <div className={`net-worth-value${netWorthHidden ? ' hidden' : ''}`} aria-hidden={netWorthHidden}>
             {new Intl.NumberFormat('en-US', { style: 'currency', currency: netWorthData.reportingCurrency || 'USD', maximumFractionDigits: 0 }).format(calculateNetWorth())}
           </div>
+          {netWorthData.hasUntrackedAccounts && (
+            <div className={`tracked-net-worth${netWorthHidden ? ' hidden' : ''}`} aria-hidden={netWorthHidden}>
+              <span>Tracked accounts</span>
+              <strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: netWorthData.reportingCurrency || 'USD', maximumFractionDigits: 0 }).format(netWorthData.trackedValue ?? 0)}</strong>
+            </div>
+          )}
           <div className={`net-worth-change ${isPositive ? 'positive' : 'negative'}`}>
             {netWorthData.hasComparison ? (
               <><span>{isPositive ? '↑' : '↓'}</span> {Math.abs(change).toFixed(1)}% this month</>

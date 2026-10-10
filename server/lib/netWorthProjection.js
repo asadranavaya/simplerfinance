@@ -18,6 +18,8 @@ function calculateCurrentNetWorth(userId, year, month) {
   const excludedCurrencies = new Set();
   const staleAccounts = new Set();
   let value = 0;
+  let trackedValue = 0;
+  let untrackedAccountCount = 0;
   const profile = db.select().from(financialProfiles).where(eq(financialProfiles.userId, userId)).get();
   const reportingCurrency = profile?.reportingCurrency || 'USD';
   const fx = ratesForDate(new Date().toISOString().slice(0, 10));
@@ -32,28 +34,36 @@ function calculateCurrentNetWorth(userId, year, month) {
   ]) {
     for (const row of rows) {
       if (!row.isActive) continue;
+      const isTracked = row.includeInNetWorth !== false;
+      if (!isTracked) untrackedAccountCount += 1;
       const projection = projectedBalance(userId, type, row);
       if (projection.simplefin?.isStale) staleAccounts.add(projection.simplefin.remoteName);
       const currency = projection.simplefin?.currency || 'USD';
       const converted = convertedValue(projection.value, currency);
       if (!Number.isFinite(converted)) { excludedCurrencies.add(currency); continue; }
       value += converted;
+      if (isTracked) trackedValue += converted;
     }
   }
 
   const cards = db.select().from(creditCards).where(eq(creditCards.userId, userId)).all();
   const manualCardIds = new Set();
+  const trackedManualCardIds = new Set();
   for (const card of cards) {
     if (!card.isActive) continue;
+    const isTracked = card.includeInNetWorth !== false;
+    if (!isTracked) untrackedAccountCount += 1;
     const simplefin = simplefinProjection(userId, 'credit_card', card.id);
     if (!simplefin) {
       manualCardIds.add(card.id);
+      if (isTracked) trackedManualCardIds.add(card.id);
       continue;
     }
     if (simplefin.isStale) staleAccounts.add(simplefin.remoteName);
     const converted = convertedValue(simplefin.balance, simplefin.currency);
     if (!Number.isFinite(converted)) { excludedCurrencies.add(simplefin.currency); continue; }
     value += converted;
+    if (isTracked) trackedValue += converted;
   }
 
   const spendingRecords = db.select().from(monthlySpending).where(and(
@@ -71,10 +81,24 @@ function calculateCurrentNetWorth(userId, year, month) {
       }, 0);
     return sum + total;
   }, 0);
+  const trackedCardDebt = spendingRecords.filter((record) => trackedManualCardIds.has(record.cardId)).reduce((sum, record) => {
+    const total = db.select().from(expenses).where(eq(expenses.spendingId, record.id)).all()
+      .filter(expense => !expense.hiddenAt)
+      .reduce((expenseSum, expense) => {
+        const revealed = revealExpenseRecord(sqlite, expense);
+        let metadata = {}; try { metadata = JSON.parse(revealed.data || '{}'); } catch {}
+        return expenseSum + customerPaidAmount(revealed.amount, metadata.split);
+      }, 0);
+    return sum + total;
+  }, 0);
 
   const convertedDebt = convertedValue(currentCardDebt, 'USD');
+  const convertedTrackedDebt = convertedValue(trackedCardDebt, 'USD');
   return {
     value: Math.round((value - (Number.isFinite(convertedDebt) ? convertedDebt : currentCardDebt)) * 100) / 100,
+    trackedValue: Math.round((trackedValue - (Number.isFinite(convertedTrackedDebt) ? convertedTrackedDebt : trackedCardDebt)) * 100) / 100,
+    hasUntrackedAccounts: untrackedAccountCount > 0,
+    untrackedAccountCount,
     excludedCurrencies: [...excludedCurrencies].sort(),
     staleAccounts: [...staleAccounts],
     reportingCurrency,

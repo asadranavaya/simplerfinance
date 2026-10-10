@@ -43,6 +43,7 @@ const creditCards = sqliteTable('credit_cards', {
   name:   text('name').notNull(),
   data:   text('data'), // JSON blob for any extra card fields
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  includeInNetWorth: integer('include_in_net_worth', { mode: 'boolean' }).notNull().default(true),
   closedAt: text('closed_at'),
 });
 
@@ -52,6 +53,7 @@ const bankAccounts = sqliteTable('bank_accounts', {
   name:   text('name').notNull(),
   data:   text('data'), // JSON blob for extra fields
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  includeInNetWorth: integer('include_in_net_worth', { mode: 'boolean' }).notNull().default(true),
   closedAt: text('closed_at'),
 });
 
@@ -61,6 +63,7 @@ const tradingAccounts = sqliteTable('trading_accounts', {
   name:   text('name').notNull(),
   data:   text('data'), // JSON blob for extra fields
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  includeInNetWorth: integer('include_in_net_worth', { mode: 'boolean' }).notNull().default(true),
   closedAt: text('closed_at'),
 });
 
