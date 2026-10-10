@@ -4174,7 +4174,14 @@ html[data-theme-mode="dark"] .subscription-calendar-arrow { color: #94a3b8; }
 .analytics-browser-heading h2 { margin: 4px 0; color: var(--text-primary); font-size: 21px; }
 .analytics-browser-heading p { margin: 0; color: var(--text-secondary); font-size: 11px; }
 .monthly-spending-page .monthly-account-card { scroll-margin-top: 20px; }
-.category-browser-select { min-width: 200px; }
+.category-browser-category-control { min-width: min(420px, 100%); }
+.category-browser-category-picker { display: grid; gap: 7px; }
+.category-browser-select { min-width: 240px; }
+.category-browser-selected-categories { display: flex; flex-wrap: wrap; gap: 6px; }
+.category-browser-selected-categories > span { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 4px 5px 4px 8px; border: 1px solid color-mix(in srgb, var(--category-color) 35%, transparent); border-radius: 999px; color: var(--text-primary); background: color-mix(in srgb, var(--category-color) 10%, var(--bg-elevated)); font-size: 10px; font-weight: 700; }
+.category-browser-selected-categories > span > i { width: 7px; height: 7px; border-radius: 50%; background: var(--category-color); }
+.category-browser-selected-categories button { display: grid; place-items: center; width: 19px; height: 19px; padding: 0 !important; border: 0 !important; border-radius: 50% !important; color: var(--text-secondary) !important; background: rgba(127,127,127,.11) !important; box-shadow: none !important; font-size: 13px !important; line-height: 1 !important; }
+.category-browser-selected-categories button:hover { color: #dc4a56 !important; background: rgba(239,68,68,.1) !important; transform: none !important; }
 .category-browser-summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
 .category-browser-summary h2 { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--category-color); }
 .category-browser-dot { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: var(--category-color); }
@@ -4200,6 +4207,7 @@ html[data-theme-mode="dark"] .subscription-calendar-arrow { color: #94a3b8; }
 .category-split-totals-empty { margin: 0; color: var(--text-secondary); font-size: 11px; }
 .category-tag-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .category-browser-tag { padding: 2px 8px; border-radius: 12px; color: #fff; background: var(--category-color); font-size: 12px; white-space: nowrap; }
+.category-browser-tag.primary { box-shadow: 0 0 0 2px color-mix(in srgb, var(--category-color) 25%, transparent); font-weight: 800; }
 .category-none { color: var(--text-tertiary); font-style: italic; }
 
 .dashboard-settings-dropdown { margin-bottom: 24px; }
@@ -6235,6 +6243,8 @@ canvas {
     min-width: 0;
     margin: 0;
   }
+
+  .category-browser-page .category-browser-category-control { grid-column: 1 / -1; }
 
   .category-browser-page .category-browser-controls .form-input {
     width: 100%;
