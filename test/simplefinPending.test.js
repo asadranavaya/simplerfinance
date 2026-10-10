@@ -68,6 +68,7 @@ test('account-scoped provider errors block only the affected account', () => {
 test('connection-scoped errors block that connection while unscoped errors block every account', () => {
   const connectionError = { errlist: [{ code: 'con.auth', conn_id: 'failed-connection', msg: 'Authentication required' }] };
   assert.equal(accountResponseHasErrors(connectionError, { id: 'account-1', conn_id: 'failed-connection' }), true);
+  assert.equal(accountResponseHasErrors(connectionError, { id: 'account-prefixed', conn_id: 'MX-failed-connection' }), true);
   assert.equal(accountResponseHasErrors(connectionError, { id: 'account-2', conn_id: 'healthy-connection' }), false);
   assert.equal(accountResponseHasErrors({ errlist: [{ code: 'gen.', msg: 'General error' }] }, { id: 'account-2' }), true);
   assert.equal(accountResponseHasErrors({ errors: ['Legacy unscoped error'] }, { id: 'account-2' }), true);

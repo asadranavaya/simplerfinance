@@ -8,6 +8,7 @@ const {
 } = require('../db/schema');
 const { convertCurrency, ratesForDate } = require('./fxRates');
 const { revealFinancialAccountData } = require('./customerDataFields');
+const { simplefinConnectionIssue } = require('./simplefinConnectionIssue');
 
 const STALE_AFTER_MS = 12 * 60 * 60 * 1000;
 
@@ -41,9 +42,14 @@ function simplefinProjection(userId, localAccountType, localAccountId) {
     ? balance
     : convertCurrency(balance, account.currency, reportingCurrency, fx.rates);
   const lastSuccess = connection.lastSyncSucceededAt ? new Date(connection.lastSyncSucceededAt).getTime() : 0;
-  const isStale = connection.status !== 'active'
+  const isStale = !['active', 'syncing'].includes(connection.status)
     || !lastSuccess
     || Date.now() - lastSuccess > STALE_AFTER_MS;
+  const issue = simplefinConnectionIssue(connection, {
+    isStale,
+    remoteAccountId: account.remoteAccountId,
+    remoteConnectionId: account.remoteConnectionId,
+  });
   return {
     connected: true,
     linkId: link.id,
@@ -57,6 +63,7 @@ function simplefinProjection(userId, localAccountType, localAccountId) {
     lastSyncSucceededAt: connection.lastSyncSucceededAt,
     connectionStatus: connection.status,
     isStale,
+    issue,
     includedInNetWorth: Number.isFinite(convertedBalance),
     convertedBalance: Number.isFinite(convertedBalance) ? convertedBalance : null,
     reportingCurrency,

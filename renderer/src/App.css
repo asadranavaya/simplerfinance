@@ -1292,8 +1292,13 @@ button[type="submit"]:hover {
 /* Unified manual/SimpleFIN account projections */
 .account-connection-badge { display: inline-flex; align-items: center; gap: 6px; margin-left: 9px; padding: 4px 8px; border-radius: 9px; color: #087b56; background: rgba(16,185,129,.11); font-size: 10px; font-weight: 750; vertical-align: middle; }
 .account-connection-badge i { width: 6px; height: 6px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
-.account-connection-badge.stale { color: #b45309; background: rgba(245,158,11,.11); }
-.account-connection-badge.stale i { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.12); }
+.account-connection-badge.issue { position: relative; color: #a64f0b; background: rgba(245,158,11,.13); cursor: help; outline: none; }
+.account-connection-badge.issue > svg { flex: 0 0 auto; color: #d97706; }
+.account-connection-badge.issue:focus-visible { box-shadow: 0 0 0 2px var(--bg-elevated), 0 0 0 4px rgba(245,158,11,.55); }
+.account-connection-tooltip { position: absolute; z-index: 40; bottom: calc(100% + 9px); left: 0; width: max-content; max-width: min(320px, 78vw); padding: 8px 10px; border: 1px solid rgba(245,158,11,.3); border-radius: 8px; color: #fffbeb; background: #78350f; box-shadow: 0 8px 24px rgba(15,23,42,.2); font-size: 10px; font-weight: 600; line-height: 1.45; text-align: left; white-space: normal; opacity: 0; visibility: hidden; transform: translateY(3px); transition: opacity .15s ease, transform .15s ease, visibility .15s ease; pointer-events: none; }
+.account-connection-tooltip::after { position: absolute; top: 100%; left: 13px; width: 8px; height: 8px; background: #78350f; content: ''; transform: translateY(-4px) rotate(45deg); }
+.account-connection-badge.issue:hover .account-connection-tooltip,
+.account-connection-badge.issue:focus .account-connection-tooltip { opacity: 1; visibility: visible; transform: translateY(0); }
 .account-balance-caption { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 9px; font-weight: 650; text-align: right; text-transform: uppercase; letter-spacing: .04em; }
 .net-worth-exclusion { display: block; margin-top: 5px; color: var(--text-secondary); font-size: 10px; font-weight: 650; }
 .accounts-projection-alert { margin-bottom: 16px; padding: 11px 14px; border-radius: 11px; font-size: 12px; line-height: 1.45; }
