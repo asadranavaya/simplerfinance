@@ -92,9 +92,7 @@ router.get('/beta-features', (req, res) => {
 
 router.get('/expense/:id/diagnostics', (req, res) => {
   const userId = req.user.accountId;
-  if (!hasFeature(userId, FEATURES.PURCHASE_DATA_INSPECTOR)) {
-    return res.status(404).json({ error: 'Purchase diagnostics are not enabled for this account.' });
-  }
+  const diagnosticsEnabled = hasFeature(userId, FEATURES.PURCHASE_DATA_INSPECTOR);
   const validatedId = cleanId(req.params.id, 'Expense identifier');
   if (validatedId.error) return res.status(400).json({ error: validatedId.error });
   const stored = db.select().from(expenses).where(eq(expenses.id, validatedId.value)).get();
@@ -106,8 +104,8 @@ router.get('/expense/:id/diagnostics', (req, res) => {
 
   const expense = revealExpenseRecord(sqlite, stored);
   const metadata = parseJson(expense.data);
-  const transaction = db.select().from(simplefinTransactions)
-    .where(eq(simplefinTransactions.expenseId, expense.id)).get();
+  const transaction = diagnosticsEnabled ? db.select().from(simplefinTransactions)
+    .where(eq(simplefinTransactions.expenseId, expense.id)).get() : null;
   let providerPayload = null;
   let providerAccount = null;
   if (transaction) {
@@ -127,6 +125,7 @@ router.get('/expense/:id/diagnostics', (req, res) => {
   }
 
   return res.json({
+    diagnosticsEnabled,
     purchase: {
       id: expense.id,
       description: expense.description,
@@ -134,9 +133,11 @@ router.get('/expense/:id/diagnostics', (req, res) => {
       date: expense.date,
       category: expense.category,
       tags: normalizeExpenseCategories(metadata).categories,
-      metadata,
+      notes: metadata.notes || '',
+      reportingCurrency: metadata.reportingCurrency || 'USD',
+      ...(diagnosticsEnabled ? { metadata } : {}),
     },
-    simplefin: transaction ? {
+    ...(diagnosticsEnabled ? { simplefin: transaction ? {
       transaction: {
         remoteTransactionId: transaction.remoteTransactionId,
         description: transaction.description,
@@ -152,7 +153,7 @@ router.get('/expense/:id/diagnostics', (req, res) => {
       },
       account: providerAccount,
       providerPayload,
-    } : null,
+    } : null } : {}),
   });
 });
 

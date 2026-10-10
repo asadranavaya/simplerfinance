@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
 import SplitPurchaseFields from '../components/SplitPurchaseFields';
+import { displayCategoryForExpense, selectCategoryExpenses } from '../util/categoryBrowserSelection';
 import { Download } from 'lucide-react';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js';
@@ -22,7 +23,8 @@ export default function CategoryBrowserPage() {
     const initialStartDate = new Date();
     initialStartDate.setMonth(initialStartDate.getMonth() - 3, 1);
     const [categories, setCategories] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || '');
+    const [selectedCategories, setSelectedCategories] = useState(() => [...new Set(searchParams.getAll('category').filter(Boolean))]);
+    const selectedCategory = selectedCategories[0] || '';
     const [timeRange, setTimeRange] = useState(() => validDate(requestedStart) && validDate(requestedEnd) ? 'custom' : '3months');
     const [customStartDate, setCustomStartDate] = useState(() => validDate(requestedStart) ? requestedStart : inputDate(initialStartDate));
     const [customEndDate, setCustomEndDate] = useState(initialEnd);
@@ -58,21 +60,24 @@ export default function CategoryBrowserPage() {
     }, [account]);
 
     useEffect(() => {
-        if (selectedCategory && account?.id) {
+        if (selectedCategories.length && account?.id) {
             loadCategoryExpenses();
+        } else {
+            setExpenses([]);
+            setTotalAmount(0);
         }
     // loadCategoryExpenses reads the current filter state listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedCategory, timeRange, customStartDate, customEndDate, account]);
+    }, [selectedCategories, timeRange, customStartDate, customEndDate, account]);
 
     useEffect(() => {
-        const next = {};
-        if (selectedCategory) next.category = selectedCategory;
-        if (customStartDate) next.start = customStartDate;
-        if (customEndDate) next.end = customEndDate;
-        if (browserRequested) next.section = 'browser';
+        const next = new URLSearchParams();
+        selectedCategories.forEach(category => next.append('category', category));
+        if (customStartDate) next.set('start', customStartDate);
+        if (customEndDate) next.set('end', customEndDate);
+        if (browserRequested) next.set('section', 'browser');
         setSearchParams(next, { replace: true });
-    }, [selectedCategory, customStartDate, customEndDate, browserRequested, setSearchParams]);
+    }, [selectedCategories, customStartDate, customEndDate, browserRequested, setSearchParams]);
 
     useEffect(() => {
         if (!browserRequested || analyticsLoading) return;
@@ -115,14 +120,13 @@ export default function CategoryBrowserPage() {
     };
 
     const loadCategoryExpenses = async () => {
-        if (!api || !account?.id || !selectedCategory) return;
+        if (!api || !account?.id || !selectedCategories.length) return;
 
         setLoading(true);
         if (!validDate(customStartDate) || !validDate(customEndDate) || customEndDate < customStartDate) {
             setExpenses([]); setTotalAmount(0); setLoading(false); return;
         }
-        const categoryExpenses = [];
-        let total = 0;
+        const rangeExpenses = [];
 
         // Get all months in the date range
         const currentDate = new Date(`${customStartDate.slice(0, 7)}-01T12:00:00Z`);
@@ -139,23 +143,17 @@ export default function CategoryBrowserPage() {
                     const cardName = card ? `${card.institution} ${card.name}` : `Card ${cardData.cardId}`;
 
                     cardData.expenses?.forEach(expense => {
-                        // Check both old format (categories array) and new format (mainCategory)
                         const expenseDate = String(expense.date || '').slice(0, 10);
                         const inExactRange = expenseDate >= customStartDate && expenseDate <= customEndDate;
-                        const matchesCategory = inExactRange && (
-                            (expense.categories && expense.categories.includes(selectedCategory)) ||
-                            expense.mainCategory === selectedCategory
-                        );
-
-                        if (matchesCategory) {
-                            categoryExpenses.push({
+                        if (inExactRange) {
+                            rangeExpenses.push({
                                 ...expense,
                                 cardName,
                                 cardId: cardData.cardId,
                                 year,
-                                month
+                                month,
+                                browserKey: `${cardData.cardId}:${expense.id}`,
                             });
-                            total += expense.amount;
                         }
                     });
                 });
@@ -166,11 +164,11 @@ export default function CategoryBrowserPage() {
             currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
         }
 
-        // Sort by date (newest first)
+        const categoryExpenses = selectCategoryExpenses(rangeExpenses, selectedCategories);
         categoryExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         setExpenses(categoryExpenses);
-        setTotalAmount(total);
+        setTotalAmount(categoryExpenses.reduce((total, expense) => total + Number(expense.amount || 0), 0));
         setLoading(false);
     };
 
@@ -239,19 +237,38 @@ export default function CategoryBrowserPage() {
         return sortConfig.direction === 'asc' ? '↑' : '↓';
     };
 
-    const removeSelectedCategory = async expense => {
+    const addSelectedCategory = category => {
+        if (!category || selectedCategories.includes(category)) return;
+        setSelectedCategories(current => [...current, category]);
+    };
+
+    const removeCategoryFilter = category => {
+        setSelectedCategories(current => current.filter(item => item !== category));
+    };
+
+    const removeDisplayedCategory = async expense => {
         if (removingExpenseId) return;
         setRemovingExpenseId(expense.id);
         setActionError('');
-        const remaining = (expense.categories || []).filter(category => category !== selectedCategory);
+        const categoryToRemove = expense.displayCategory;
+        const remaining = (expense.categories || []).filter(category => category !== categoryToRemove);
+        const nextMainCategory = expense.mainCategory === categoryToRemove
+            ? remaining[0] || ''
+            : expense.mainCategory || remaining[0] || '';
         try {
-            await api.updateExpense(account.id, expense.year, expense.month, expense.cardId, expense.id, {
+            const updated = await api.updateExpense(account.id, expense.year, expense.month, expense.cardId, expense.id, {
                 categories: remaining,
-                mainCategory: remaining[0] || '',
-                category: remaining[0] || 'Uncategorized',
+                mainCategory: nextMainCategory,
+                category: nextMainCategory || 'Uncategorized',
             });
-            setExpenses(current => current.filter(item => item.id !== expense.id));
-            setTotalAmount(current => current - expense.amount);
+            const nextExpense = { ...expense, ...updated, categories: remaining, mainCategory: nextMainCategory };
+            const displayCategory = displayCategoryForExpense(nextExpense, selectedCategories);
+            if (displayCategory) {
+                setExpenses(current => current.map(item => item.id === expense.id ? { ...nextExpense, displayCategory } : item));
+            } else {
+                setExpenses(current => current.filter(item => item.id !== expense.id));
+                setTotalAmount(current => current - expense.amount);
+            }
             loadAnalytics();
         } catch (error) {
             setActionError(error.message || 'Unable to remove this category from the purchase.');
@@ -259,6 +276,8 @@ export default function CategoryBrowserPage() {
             setRemovingExpenseId(null);
         }
     };
+
+    const categorySelectionLabel = selectedCategories.join(' + ');
 
     const openSplitPurchase = expense => {
         setSplitError('');
@@ -344,7 +363,7 @@ export default function CategoryBrowserPage() {
             }).join('\n') || 'Not split';
 
             doc.setProperties({
-                title: `${selectedCategory} spending report`,
+                title: `${categorySelectionLabel} spending report`,
                 subject: `Purchases and splits from ${customStartDate} through ${customEndDate}`,
                 creator: 'Simpler Finance',
             });
@@ -356,7 +375,7 @@ export default function CategoryBrowserPage() {
             doc.text('Category spending report', 42, 43);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
-            doc.text(`${selectedCategory}  |  ${reportDate(customStartDate)} - ${reportDate(customEndDate)}`, 42, 66);
+            doc.text(`${categorySelectionLabel}  |  ${reportDate(customStartDate)} - ${reportDate(customEndDate)}`, 42, 66, { maxWidth: pageWidth - 84 });
             doc.setFontSize(8);
             doc.setTextColor(224, 219, 255);
             doc.text('Generated from your filtered Analytics purchases', 42, 86);
@@ -413,12 +432,12 @@ export default function CategoryBrowserPage() {
             autoTable(doc, {
                 startY: tableStart + 10,
                 margin: { left: 30, right: 30, bottom: 34 },
-                head: [['Date', 'Purchase', 'Account', 'Other tags', 'Split details', 'Original', 'Your share']],
+                head: [['Date', 'Purchase', 'Account', 'Category / other tags', 'Split details', 'Original', 'Your share']],
                 body: getSortedExpenses().map(expense => [
                     reportDate(expense.date),
                     expense.description,
                     expense.cardName,
-                    (expense.categories || []).filter(category => category !== selectedCategory).join(', ') || 'None',
+                    [expense.displayCategory, ...(expense.categories || []).filter(category => category !== expense.displayCategory)].filter(Boolean).join(', ') || 'None',
                     splitDetails(expense),
                     reportMoney(expense.originalAmount ?? expense.amount),
                     reportMoney(expense.amount),
@@ -446,7 +465,7 @@ export default function CategoryBrowserPage() {
                 doc.text(new Date().toLocaleString(), pageWidth - 30, 773, { align: 'right' });
             }
 
-            const safeCategory = selectedCategory.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'category';
+            const safeCategory = categorySelectionLabel.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'category';
             doc.save(`${safeCategory}-${customStartDate}-to-${customEndDate}.pdf`);
         } catch (error) {
             setActionError(error.message || 'Unable to create the PDF report.');
@@ -598,24 +617,33 @@ export default function CategoryBrowserPage() {
             {/* Controls */}
             <div className="content-card">
                 <div className="category-browser-controls">
-                    {/* Category Selection */}
-                    <div className="form-group">
-                        <label className="form-label">Category:</label>
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="form-input category-browser-select"
-                        >
-                            <option value="">Select a category</option>
+                    <div className="form-group category-browser-category-control">
+                        <label className="form-label">Categories:</label>
+                        <div className="category-browser-category-picker">
+                            {!!selectedCategories.length && <div className="category-browser-selected-categories" aria-label="Selected categories">
+                                {selectedCategories.map(category => <span key={category} style={{ '--category-color': getCategoryColor(category) }}>
+                                    <i aria-hidden="true" />{category}
+                                    <button type="button" onClick={() => removeCategoryFilter(category)} aria-label={`Remove ${category} from the category filter`}>×</button>
+                                </span>)}
+                            </div>}
+                            <select
+                                value=""
+                                onChange={(event) => addSelectedCategory(event.target.value)}
+                                className="form-input category-browser-select"
+                                aria-label="Add a category to the filter"
+                            >
+                            <option value="">{selectedCategories.length ? 'Add another category' : 'Select a category'}</option>
                             {categories.map((category, index) => {
                                 const categoryName = typeof category === 'string' ? category : category.name;
+                                if (selectedCategories.includes(categoryName)) return null;
                                 return (
                                     <option key={index} value={categoryName}>
                                         {categoryName}
                                     </option>
                                 );
                             })}
-                        </select>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Time Range Selection */}
@@ -664,14 +692,14 @@ export default function CategoryBrowserPage() {
             </div>
 
             {/* Results */}
-            {selectedCategory && (
+            {!!selectedCategories.length && (
                 <div className="content-card">
                     <div className="category-browser-summary">
                         <h2 style={{ '--category-color': getCategoryColor(selectedCategory) }}>
                             <span
                                 className="category-browser-dot"
                             ></span>
-                            {selectedCategory}
+                            {selectedCategories.length === 1 ? selectedCategory : 'Combined category spending'}
                         </h2>
                         <div className="category-browser-summary-actions">
                             <div className="category-browser-total">
@@ -688,11 +716,11 @@ export default function CategoryBrowserPage() {
                     {loading ? (
                         <p>Loading expenses...</p>
                     ) : expenses.length === 0 ? (
-                        <p>No expenses found for this category in the selected time range.</p>
+                        <p>No expenses found for the selected categories in this time range.</p>
                     ) : (
                         <div>
                             <p className="category-browser-count">
-                                Found {expenses.length} expense{expenses.length !== 1 ? 's' : ''} in this category
+                                Found {expenses.length} unique expense{expenses.length !== 1 ? 's' : ''} across {selectedCategories.length} categor{selectedCategories.length === 1 ? 'y' : 'ies'}
                             </p>
 
                             <section className="category-split-totals" aria-labelledby="category-split-totals-title">
@@ -736,7 +764,7 @@ export default function CategoryBrowserPage() {
                                                 Card {getSortIcon('card')}
                                             </th>
                                             <th>
-                                                Subcategories
+                                                Category & other tags
                                             </th>
                                             <th>Split with</th>
                                             <th
@@ -758,7 +786,7 @@ export default function CategoryBrowserPage() {
                                                 <td data-label="Description">
                                                     <div className="category-purchase-name">
                                                         <span>{expense.description}</span>
-                                                        <button type="button" className="category-purchase-remove" disabled={removingExpenseId === expense.id} onClick={() => removeSelectedCategory(expense)} aria-label={`Remove ${selectedCategory} from ${expense.description}`} title={`Remove ${selectedCategory} from this purchase`}>
+                                                        <button type="button" className="category-purchase-remove" disabled={removingExpenseId === expense.id} onClick={() => removeDisplayedCategory(expense)} aria-label={`Remove ${expense.displayCategory} from ${expense.description}`} title={`Remove ${expense.displayCategory} from this purchase`}>
                                                             {removingExpenseId === expense.id ? '…' : '×'}
                                                         </button>
                                                     </div>
@@ -769,8 +797,9 @@ export default function CategoryBrowserPage() {
                                                 <td data-label="Tags">
                                                     {expense.categories && expense.categories.length > 0 ? (
                                                         <div className="category-tag-list">
+                                                            <span className="category-browser-tag primary" style={{ '--category-color': getCategoryColor(expense.displayCategory) }}>{expense.displayCategory}</span>
                                                             {expense.categories
-                                                                .filter(cat => cat !== selectedCategory) // Don't show the main selected category
+                                                                .filter(cat => cat !== expense.displayCategory)
                                                                 .map((category, catIndex) => (
                                                                     <span
                                                                         key={catIndex}

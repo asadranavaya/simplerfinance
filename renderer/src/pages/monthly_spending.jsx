@@ -8,7 +8,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { externalCategoryTooltip, ExternalTooltipCleanupPlugin } from '../util/externalChartTooltip';
 import { Doughnut } from 'react-chartjs-2';
-import { ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, StickyNote, Upload } from "lucide-react";
 import ImportModal from '../util/ImportCsv';
 import SplitPurchaseFields from '../components/SplitPurchaseFields';
 
@@ -55,6 +55,10 @@ export default function MonthlySpendingPage() {
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
   const [betaFeatures, setBetaFeatures] = useState([]);
   const [purchaseDiagnostics, setPurchaseDiagnostics] = useState(null);
+  const [purchaseNotesDraft, setPurchaseNotesDraft] = useState('');
+  const [savingPurchaseNotes, setSavingPurchaseNotes] = useState(false);
+  const [purchaseNotesError, setPurchaseNotesError] = useState('');
+  const [purchaseNotesSaved, setPurchaseNotesSaved] = useState(false);
   const [changingPeriod, setChangingPeriod] = useState(false);
 
   useEffect(() => {
@@ -78,11 +82,15 @@ export default function MonthlySpendingPage() {
   }, []);
 
   const purchaseInspectorEnabled = betaFeatures.includes('purchase_data_inspector');
+  const showDiagnosticMetadata = purchaseDiagnostics?.data?.diagnosticsEnabled ?? purchaseInspectorEnabled;
   const openPurchaseDiagnostics = async (expense) => {
-    if (!purchaseInspectorEnabled) return;
+    setPurchaseNotesDraft(expense.notes || '');
+    setPurchaseNotesError('');
+    setPurchaseNotesSaved(false);
     setPurchaseDiagnostics({ expense, loading: true, error: '', data: null });
     try {
       const data = await api.getExpenseDiagnostics(expense.id);
+      setPurchaseNotesDraft(data.purchase?.notes || '');
       setPurchaseDiagnostics({ expense, loading: false, error: '', data });
     } catch (error) {
       setPurchaseDiagnostics({ expense, loading: false, error: error.message, data: null });
@@ -353,6 +361,39 @@ export default function MonthlySpendingPage() {
       ...record,
       expenses: (record.expenses || []).map(expense => expense.id === updated.id ? { ...expense, ...updated } : expense),
     })));
+  };
+
+  const savePurchaseNotes = async event => {
+    event.preventDefault();
+    if (!purchaseDiagnostics?.expense || savingPurchaseNotes) return;
+    setSavingPurchaseNotes(true);
+    setPurchaseNotesError('');
+    setPurchaseNotesSaved(false);
+    try {
+      const updated = await api.updateExpense(
+        account.id,
+        selectedYear,
+        selectedMonth + 1,
+        purchaseDiagnostics.expense.cardId,
+        purchaseDiagnostics.expense.id,
+        { notes: purchaseNotesDraft },
+      );
+      replaceMonthlyExpense(updated);
+      setPurchaseDiagnostics(current => current ? {
+        ...current,
+        expense: { ...current.expense, notes: updated.notes || '' },
+        data: current.data ? {
+          ...current.data,
+          purchase: { ...current.data.purchase, notes: updated.notes || '' },
+        } : current.data,
+      } : current);
+      setPurchaseNotesDraft(updated.notes || '');
+      setPurchaseNotesSaved(true);
+    } catch (error) {
+      setPurchaseNotesError(error.message || 'Unable to save these notes.');
+    } finally {
+      setSavingPurchaseNotes(false);
+    }
   };
 
   const addCategoryToExpense = async (expense, category) => {
@@ -774,22 +815,22 @@ export default function MonthlySpendingPage() {
                   expenses.map(expense => (
                     <div
                       key={expense.id}
-                      className={`expense-item${purchaseInspectorEnabled ? ' expense-inspectable' : ''}`}
+                      className="expense-item expense-inspectable"
                       onClick={event => {
                         if (event.target.closest('.expense-actions, .category-picker-overlay, .category-dropdown, button, input, select, a')) return;
-                        openPurchaseDiagnostics(expense);
+                        openPurchaseDiagnostics({ ...expense, cardId: card.id });
                       }}
                       onKeyDown={event => {
-                        if (!purchaseInspectorEnabled || event.target !== event.currentTarget || !['Enter', ' '].includes(event.key)) return;
+                        if (event.target !== event.currentTarget || !['Enter', ' '].includes(event.key)) return;
                         event.preventDefault();
-                        openPurchaseDiagnostics(expense);
+                        openPurchaseDiagnostics({ ...expense, cardId: card.id });
                       }}
-                      role={purchaseInspectorEnabled ? 'button' : undefined}
-                      tabIndex={purchaseInspectorEnabled ? 0 : undefined}
-                      aria-label={purchaseInspectorEnabled ? `Inspect purchase data for ${expense.description}` : undefined}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View purchase details for ${expense.description}`}
                     >
                       <div className="expense-primary-copy">
-                        <span className="expense-merchant-copy">{expense.icon ? <img className="entity-icon" src={expense.icon.url} alt="" /> : <button type="button" className="entity-icon-fallback" title="Suggest a company icon" onClick={() => { setIconSubmissionError(''); setIconDraft({ entityType:'merchant', displayName:expense.description, pattern:expense.providerDescription || expense.description, exampleText:expense.providerDescription || expense.description }); }}>{expense.description.slice(0,1).toUpperCase()}</button>}<span className="text-black">{expense.description}</span></span>
+                        <span className="expense-merchant-copy">{expense.icon ? <img className="entity-icon" src={expense.icon.url} alt="" /> : <button type="button" className="entity-icon-fallback" title="Suggest a company icon" onClick={() => { setIconSubmissionError(''); setIconDraft({ entityType:'merchant', displayName:expense.description, pattern:expense.providerDescription || expense.description, exampleText:expense.providerDescription || expense.description }); }}>{expense.description.slice(0,1).toUpperCase()}</button>}<span className="text-black">{expense.description}</span>{Boolean(expense.notes?.trim()) && <span className="expense-note-indicator" title="This purchase has notes" aria-label="This purchase has notes"><StickyNote size={14} strokeWidth={2.2} aria-hidden="true" /></span>}</span>
                         {(expense.transactionTime || expense.pending) && <small className="expense-transaction-meta">
                           {expense.transactionTime && <time dateTime={expense.transactionTime}>{expense.transactionTimePrecision === 'time'
                             ? new Date(expense.transactionTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -986,8 +1027,8 @@ export default function MonthlySpendingPage() {
         <div className="modal-overlay purchase-diagnostics-overlay" role="presentation" onMouseDown={() => setPurchaseDiagnostics(null)}>
           <div className="modal-content purchase-diagnostics-modal" role="dialog" aria-modal="true" aria-labelledby="purchase-diagnostics-title" onMouseDown={event => event.stopPropagation()}>
             <div className="purchase-diagnostics-header">
-              <div><span>Beta · Purchase data inspector</span><h2 id="purchase-diagnostics-title">{purchaseDiagnostics.expense.description}</h2><p>Everything currently stored for this purchase, including the original SimpleFIN response when available.</p></div>
-              <button type="button" className="modal-close" aria-label="Close purchase inspector" onClick={() => setPurchaseDiagnostics(null)}>×</button>
+              <div><span>{showDiagnosticMetadata ? 'Beta · Purchase data inspector' : 'Purchase details'}</span><h2 id="purchase-diagnostics-title">{purchaseDiagnostics.expense.description}</h2><p>{showDiagnosticMetadata ? 'Purchase details, application metadata, and the original SimpleFIN response when available.' : 'Review this purchase and keep private notes for your records.'}</p></div>
+              <button type="button" className="modal-close" aria-label="Close purchase details" onClick={() => setPurchaseDiagnostics(null)}>×</button>
             </div>
             {purchaseDiagnostics.loading && <div className="purchase-diagnostics-state">Loading purchase data…</div>}
             {purchaseDiagnostics.error && <div className="purchase-diagnostics-error" role="alert">{purchaseDiagnostics.error}</div>}
@@ -996,24 +1037,34 @@ export default function MonthlySpendingPage() {
                 <h3>Purchase</h3>
                 <dl className="purchase-diagnostics-grid">
                   <div><dt>Description</dt><dd>{purchaseDiagnostics.data.purchase.description}</dd></div>
-                  <div><dt>Amount</dt><dd>{formatMoney(purchaseDiagnostics.data.purchase.amount, purchaseDiagnostics.data.purchase.metadata?.reportingCurrency)}</dd></div>
+                  <div><dt>Amount</dt><dd>{formatMoney(purchaseDiagnostics.data.purchase.amount, purchaseDiagnostics.data.purchase.reportingCurrency)}</dd></div>
                   <div><dt>Date</dt><dd>{purchaseDiagnostics.data.purchase.date || 'Unavailable'}</dd></div>
                   <div><dt>Primary category</dt><dd>{purchaseDiagnostics.data.purchase.category || 'Uncategorized'}</dd></div>
                 </dl>
                 <div className="purchase-diagnostics-tags"><strong>Tags</strong><div>{(purchaseDiagnostics.data.purchase.tags || []).map(tag => <span key={tag}>{tag}</span>)}</div></div>
               </section>
-              <section>
+              <section className="purchase-notes-section">
+                <form onSubmit={savePurchaseNotes}>
+                  <div className="purchase-notes-heading"><div><h3>Notes</h3><p>Add context or reminders about this purchase.</p></div><small>{purchaseNotesDraft.length}/2000</small></div>
+                  <textarea value={purchaseNotesDraft} onChange={event => { setPurchaseNotesDraft(event.target.value); setPurchaseNotesSaved(false); }} maxLength={2000} rows={4} placeholder="Add a private note…" aria-label="Purchase notes" />
+                  <div className="purchase-notes-actions">
+                    <span>{purchaseNotesError ? <b role="alert">{purchaseNotesError}</b> : purchaseNotesSaved ? <em role="status">Notes saved</em> : null}</span>
+                    <button type="submit" disabled={savingPurchaseNotes}>{savingPurchaseNotes ? 'Saving…' : 'Save notes'}</button>
+                  </div>
+                </form>
+              </section>
+              {showDiagnosticMetadata && <section>
                 <h3>Application metadata</h3>
                 <pre>{JSON.stringify(purchaseDiagnostics.data.purchase.metadata, null, 2)}</pre>
-              </section>
-              <section>
+              </section>}
+              {showDiagnosticMetadata && <section>
                 <h3>SimpleFIN data</h3>
                 {purchaseDiagnostics.data.simplefin ? <>
                   <h4>Normalized transaction</h4><pre>{JSON.stringify(purchaseDiagnostics.data.simplefin.transaction, null, 2)}</pre>
                   <h4>Linked provider account</h4><pre>{JSON.stringify(purchaseDiagnostics.data.simplefin.account, null, 2)}</pre>
                   <h4>Original provider payload</h4><pre>{JSON.stringify(purchaseDiagnostics.data.simplefin.providerPayload, null, 2)}</pre>
                 </> : <p className="purchase-diagnostics-empty">This is a manual purchase, so there is no SimpleFIN payload.</p>}
-              </section>
+              </section>}
             </div>}
           </div>
         </div>, document.body
