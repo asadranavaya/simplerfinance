@@ -17,6 +17,16 @@ const uuidFrom = value => {
 };
 const sha256 = buffer => crypto.createHash('sha256').update(buffer).digest('hex');
 
+function copyAssetIfMissing(source, destination) {
+  try {
+    fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
+  } catch (error) {
+    // Database initialization can run in parallel (for example, in Node's test
+    // workers). Another process winning this exclusive copy is a successful seed.
+    if (error.code !== 'EEXIST') throw error;
+  }
+}
+
 function readLibrary() {
   const document = JSON.parse(fs.readFileSync(path.join(libraryRoot, 'rules.json'), 'utf8'));
   if (document.schemaVersion !== 1 || !Array.isArray(document.rules) || document.rules.length > 5000) {
@@ -60,7 +70,7 @@ function seedSharedIconLibrary(sqlite) {
         for (const size of [32, 64, 128]) {
           const source = path.join(libraryRoot, 'icons', rule.variants[size].file);
           const destination = path.join(runtimeRoot, `${asset.storage_key}-${size}.webp`);
-          if (!fs.existsSync(destination)) fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
+          copyAssetIfMissing(source, destination);
           fs.chmodSync(destination, 0o600);
         }
         sqlite.prepare(`INSERT INTO icon_assets(id,content_hash,storage_key,byte_size,width,height,status,created_at,reviewed_at) VALUES(?,?,?,?,128,128,'approved',?,?)`).run(asset.id, contentHash, asset.storage_key, canonical.length, now, now);
