@@ -4479,6 +4479,17 @@ html[data-theme-mode="dark"] .subscription-calendar-arrow { color: #94a3b8; }
 .purchase-diagnostics-tags > strong { display: block; margin-bottom: 7px; color: var(--text-secondary); font-size: 10px; }
 .purchase-diagnostics-tags > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .purchase-diagnostics-tags span { padding: 5px 8px; border-radius: 999px; color: #7658dc; background: rgba(124, 92, 229, .1); font-size: 10px; font-weight: 700; }
+.purchase-notes-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 9px; }
+.purchase-notes-heading h3 { margin-bottom: 3px; }
+.purchase-notes-heading p { margin: 0; color: var(--text-secondary); font-size: 10px; }
+.purchase-notes-heading small { color: var(--text-tertiary); font-size: 9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.purchase-notes-section textarea { width: 100%; min-height: 96px; padding: 11px 12px; resize: vertical; border: 1px solid var(--border-color); border-radius: 10px; outline: none; color: var(--text-primary); background: var(--bg-elevated); font: 12px/1.5 var(--font-display); transition: border-color .2s ease, box-shadow .2s ease; }
+.purchase-notes-section textarea:focus { border-color: var(--theme-accent); box-shadow: 0 0 0 3px rgba(var(--theme-accent-rgb),.1); }
+.purchase-notes-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.purchase-notes-actions span { min-width: 0; font-size: 10px; }
+.purchase-notes-actions b { color: #d85661; font-weight: 650; }
+.purchase-notes-actions em { color: #0b9767; font-style: normal; font-weight: 700; }
+.purchase-notes-actions button { min-width: 92px; padding: 8px 11px !important; font-size: 10px !important; }
 .purchase-diagnostics-content pre { max-width: 100%; max-height: 320px; margin: 0; padding: 13px; overflow: auto; border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-primary); background: var(--bg-secondary); font: 10px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .purchase-diagnostics-state, .purchase-diagnostics-error { margin: 24px; padding: 16px; border-radius: 11px; font-size: 12px; }
 .purchase-diagnostics-state { color: var(--text-secondary); background: var(--bg-elevated); }
@@ -5517,6 +5528,7 @@ canvas {
 }
 .expense-inline-error { display: block; max-width: 620px; margin-top: 5px; color: #c2414d; font-size: 10px; font-weight: 600; line-height: 1.4; }
 .expense-merchant-copy { display: inline-flex; align-items: center; gap: 9px; }
+.expense-note-indicator { display: inline-grid; place-items: center; flex: 0 0 auto; width: 23px; height: 23px; border-radius: 7px; color: #6d5de7; background: rgba(99,102,241,.1); }
 .expense-transaction-meta {
   display: flex;
   align-items: center;
@@ -6789,7 +6801,7 @@ canvas {
 
   .monthly-spending-page .expense-merchant-copy {
     display: grid;
-    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-columns: 32px minmax(0, 1fr) auto;
     align-items: center;
     gap: 9px;
     min-width: 0;
