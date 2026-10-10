@@ -12,6 +12,7 @@ const { loginLockout, recordLoginFailure, clearLoginFailures } = require('../mid
 const { sendEmailChangeCode, sendMfaCode, sendPasswordResetCode, sendRegistrationCode } = require('../lib/email');
 const { validateAccountName } = require('../lib/accountName');
 const { getRequestIp, recordSecurityBlock, registerSecurityResetter } = require('../lib/securityActivity');
+const { expireTrustedDevices } = require('../lib/trustedDeviceActivity');
 const { SqliteRateLimitStore, hashRateLimitIdentity } = require('../lib/sqliteRateLimitStore');
 
 const router = Router();
@@ -44,7 +45,7 @@ function findTrustedDevice(req, userId) {
   if (!id || !token || extra) return null;
   const record = db.select().from(trustedDevices)
     .where(and(eq(trustedDevices.id, id), eq(trustedDevices.userId, userId))).get();
-  if (!record || record.expiresAt <= new Date().toISOString()) return null;
+  if (!record || record.revokedAt || record.expiresAt <= new Date().toISOString()) return null;
   const supplied = Buffer.from(hashDeviceToken(token), 'hex');
   const expected = Buffer.from(record.tokenHash, 'hex');
   if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return null;
@@ -75,6 +76,8 @@ function rememberTrustedDevice(req, res, userId) {
     maxAge: TRUSTED_DEVICE_MAX_AGE,
     path: '/api/auth',
   });
+  require('../lib/trustedDeviceActivity').recordDeviceActivity(id, userId, getRequestIp(req), 'login');
+  return id;
 }
 
 function trackedRateLimiter({ reason, keyType, message, ...options }) {
@@ -172,13 +175,14 @@ const otpVerifyDeviceLimiter = trackedRateLimiter({
   legacyHeaders: false,
 });
 
-function issueToken(res, user) {
+function issueToken(res, user, trustedDeviceId = null) {
   const payload = {
     userId:    user.id,
     accountId: user.accountId,
     email:     user.email,
     role:      user.role,
     sessionVersion: user.sessionVersion,
+    ...(trustedDeviceId ? { trustedDeviceId } : {}),
   };
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
   res.cookie('token', token, {
@@ -466,7 +470,7 @@ router.put('/password/forgot/reset', async (req, res) => {
   const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   db.transaction(() => {
     db.update(users).set({ passwordHash, sessionVersion: user.sessionVersion + 1 }).where(eq(users.id, user.id)).run();
-    db.delete(trustedDevices).where(eq(trustedDevices.userId, user.id)).run();
+    expireTrustedDevices(user.id);
     db.delete(mfaTokens).where(eq(mfaTokens.userId, user.id)).run();
   });
   for (const name of ['token', 'trusted_device', 'password_reset_authorized']) {
@@ -521,12 +525,9 @@ router.post('/login', loginLockout, async (req, res) => {
     const trustedDevice = findTrustedDevice(req, user.id);
     if (trustedDevice) {
       const account = db.select().from(accounts).where(eq(accounts.id, user.accountId)).get();
-      db.update(trustedDevices).set({
-        lastUsedAt: new Date().toISOString(),
-        lastIp: getRequestIp(req),
-      }).where(eq(trustedDevices.id, trustedDevice.id)).run();
+      require('../lib/trustedDeviceActivity').recordDeviceActivity(trustedDevice.id, user.id, getRequestIp(req), 'login');
       clearLoginFailures(req);
-      issueToken(res, user);
+      issueToken(res, user, trustedDevice.id);
       return res.json({
         user: { email: user.email, accountId: user.accountId, name: account?.name, role: user.role },
         trustedDevice: true,
@@ -636,8 +637,8 @@ router.post('/mfa/verify', otpVerifyLimiter, otpVerifyDeviceLimiter, async (req,
   const account = db.select().from(accounts).where(eq(accounts.id, user.accountId)).get();
 
   clearLoginFailures(req);
-  issueToken(res, user);
-  if (rememberDevice === true) rememberTrustedDevice(req, res, user.id);
+  const trustedDeviceId = rememberDevice === true ? rememberTrustedDevice(req, res, user.id) : null;
+  issueToken(res, user, trustedDeviceId);
   res.clearCookie('preauth', { httpOnly: true, sameSite: 'strict' });
 
   res.json({ user: { email: user.email, accountId: user.accountId, name: account?.name, role: user.role } });
@@ -655,7 +656,7 @@ router.post('/sessions/revoke-all', requireAuth, (req, res) => {
   const user = db.select().from(users).where(eq(users.id, req.user.userId)).get();
   if (!user) return res.status(404).json({ error: 'User not found' });
   db.transaction(() => {
-    db.delete(trustedDevices).where(eq(trustedDevices.userId, user.id)).run();
+    expireTrustedDevices(user.id);
     db.update(users).set({ sessionVersion: user.sessionVersion + 1 }).where(eq(users.id, user.id)).run();
   });
   res.clearCookie('token', { httpOnly: true, sameSite: 'strict' });
@@ -755,7 +756,7 @@ router.post('/email/verify', requireAuth, otpVerifyLimiter, otpVerifyDeviceLimit
       lastEmailChangedAt: now,
       sessionVersion: nextSessionVersion,
     }).where(eq(users.id, user.id)).run();
-    db.delete(trustedDevices).where(eq(trustedDevices.userId, user.id)).run();
+    expireTrustedDevices(user.id);
   });
   res.clearCookie('trusted_device', { httpOnly: true, sameSite: 'strict', path: '/api/auth' });
   const updated = db.select().from(users).where(eq(users.id, user.id)).get();
@@ -794,7 +795,7 @@ router.put('/password', requireAuth, async (req, res) => {
   const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   const nextSessionVersion = user.sessionVersion + 1;
   db.update(users).set({ passwordHash: newHash, sessionVersion: nextSessionVersion }).where(eq(users.id, req.user.userId)).run();
-  db.delete(trustedDevices).where(eq(trustedDevices.userId, req.user.userId)).run();
+  expireTrustedDevices(req.user.userId);
   res.clearCookie('trusted_device', { httpOnly: true, sameSite: 'strict', path: '/api/auth' });
 
   // Keep only this browser signed in; every previously issued token now has an
@@ -812,37 +813,9 @@ router.get('/mfa/status', requireAuth, (req, res) => {
 });
 
 // GET /api/auth/me  — called on app load to restore session
-router.get('/me', (req, res) => {
-  const token = req.cookies?.token;
-  if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const currentUser = db.select().from(users).where(eq(users.id, payload.userId)).get();
-    if (!currentUser || !currentUser.isActive) {
-      res.clearCookie('token', { httpOnly: true, sameSite: 'strict' });
-      return res.status(403).json({ error: 'This account is inactive', code: 'ACCOUNT_INACTIVE' });
-    }
-    const tokenSessionVersion = Number.isInteger(payload.sessionVersion) ? payload.sessionVersion : 0;
-    if (tokenSessionVersion !== currentUser.sessionVersion) {
-      res.clearCookie('token', { httpOnly: true, sameSite: 'strict' });
-      return res.status(401).json({
-        error: 'Your session ended because the account password changed.',
-        code: 'SESSION_REVOKED',
-      });
-    }
-    const account = db.select().from(accounts).where(eq(accounts.id, currentUser.accountId)).get();
-    res.json({
-      user: {
-        email:     currentUser.email,
-        accountId: currentUser.accountId,
-        name:      account?.name,
-        role:      currentUser.role,
-      }
-    });
-  } catch {
-    res.status(401).json({ error: 'Invalid or expired session' });
-  }
+router.get('/me', requireAuth, (req, res) => {
+  const account = db.select().from(accounts).where(eq(accounts.id, req.user.accountId)).get();
+  res.json({ user: { email: req.user.email, accountId: req.user.accountId, name: account?.name, role: req.user.role } });
 });
 
 // POST /api/auth/mfa/send  — send OTP to authenticated user (settings enable flow)
@@ -945,9 +918,7 @@ router.post('/mfa/toggle', requireAuth, async (req, res) => {
       .where(eq(mfaTokens.userId, req.user.userId))
       .run();
 
-    db.delete(trustedDevices)
-      .where(eq(trustedDevices.userId, req.user.userId))
-      .run();
+    expireTrustedDevices(req.user.userId);
     res.clearCookie('trusted_device', { httpOnly: true, sameSite: 'strict', path: '/api/auth' });
 
     return res.json({ ok: true, mfaEnabled: false });

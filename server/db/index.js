@@ -618,6 +618,19 @@ for (const sql of [
 }
 
 // Seed the bundled, checksummed v1 icon library after the icon tables exist.
+try { sqlite.exec('ALTER TABLE trusted_devices ADD COLUMN revoked_at TEXT'); } catch (_) {}
+sqlite.exec(`CREATE TABLE IF NOT EXISTS trusted_device_activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  device_id TEXT NOT NULL REFERENCES trusted_devices(id) ON DELETE CASCADE,
+  ip_address TEXT NOT NULL,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trusted_device_activity_device_idx ON trusted_device_activity(device_id, id DESC);
+INSERT INTO trusted_device_activity(device_id,ip_address,first_seen_at,last_seen_at,source)
+  SELECT id,last_ip,last_used_at,last_used_at,'legacy_login' FROM trusted_devices d
+  WHERE last_ip IS NOT NULL AND NOT EXISTS(SELECT 1 FROM trusted_device_activity a WHERE a.device_id=d.id);`);
 sqlite.exec(`CREATE TABLE IF NOT EXISTS purchase_reminders (
   expense_id TEXT PRIMARY KEY REFERENCES expenses(id) ON DELETE CASCADE,
   account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,

@@ -336,7 +336,8 @@ test('verified email changes clear trusted devices, rotate sessions, and start t
     assert.equal(updated.pendingEmail, null);
     assert.equal(updated.sessionVersion, 1);
     assert.ok(updated.lastEmailChangedAt);
-    assert.equal(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).all().length, 0);
+    assert.equal(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).all().length, 1);
+    assert.ok(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).get().revokedAt);
 
     const revoked = await fetch(`${base}/api/auth/me`, { headers: { cookie: `token=${oldToken}` } });
     assert.equal((await revoked.json()).code, 'SESSION_REVOKED');
@@ -404,7 +405,8 @@ test('password recovery is account-private and requires code verification before
     const updated = db.select().from(users).where(eq(users.id, target.id)).get();
     assert.equal(updated.sessionVersion, 1);
     assert.equal(await bcrypt.compare(newPassword, updated.passwordHash), true);
-    assert.equal(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).all().length, 0);
+    assert.equal(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).all().length, 1);
+    assert.ok(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).get().revokedAt);
     assert.equal(db.select().from(mfaTokens).where(eq(mfaTokens.userId, target.id)).all().length, 0);
   });
 });
@@ -433,7 +435,7 @@ test('administrators can remove only the selected trusted device for a user', as
       method: 'DELETE', headers: { cookie: `token=${token}` },
     });
     assert.equal(response.status, 200);
-    assert.equal(db.select().from(trustedDevices).where(eq(trustedDevices.id, selectedId)).get(), undefined);
+    assert.ok(db.select().from(trustedDevices).where(eq(trustedDevices.id, selectedId)).get().revokedAt);
     assert.ok(db.select().from(trustedDevices).where(eq(trustedDevices.id, retainedId)).get());
   });
 });
@@ -461,7 +463,8 @@ test('users can revoke all sessions and trusted devices including their current 
     const token = jwt.sign({ userId: target.id, sessionVersion: 0 }, JWT_SECRET, { expiresIn: '1m' });
     const response = await fetch(`${base}/api/auth/sessions/revoke-all`, { method: 'POST', headers: { cookie: `token=${token}` } });
     assert.equal(response.status, 200);
-    assert.equal(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).all().length, 0);
+    assert.equal(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).all().length, 2);
+    assert.ok(db.select().from(trustedDevices).where(eq(trustedDevices.userId, target.id)).all().every(device => device.revokedAt));
     assert.equal(db.select().from(users).where(eq(users.id, target.id)).get().sessionVersion, 1);
     const revoked = await fetch(`${base}/api/auth/me`, { headers: { cookie: `token=${token}` } });
     assert.equal((await revoked.json()).code, 'SESSION_REVOKED');

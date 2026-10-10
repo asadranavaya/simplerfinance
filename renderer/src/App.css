@@ -7061,3 +7061,14 @@ canvas {
 .travel-plan-list article.upcoming-event > .upcoming-event-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; flex: 1; }
 .upcoming-event-note { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8rem; opacity: 0.75; margin-top: 6px; }
 .upcoming-event .upcoming-event-remove { flex-shrink: 0; padding: 6px; display: inline-flex; align-items: center; justify-content: center; margin-left: auto; }
+.admin-device-workspace { overflow: hidden; }
+.admin-device-slider { display: flex; width: 200%; align-items: flex-start; transition: transform .25s ease; }
+.admin-device-slider > .admin-device-list, .admin-device-slider > .admin-device-history { flex: 0 0 50%; min-width: 0; box-sizing: border-box; }
+.admin-device-workspace.showing-history .admin-device-slider { transform: translateX(-50%); }
+.admin-device-slider > .admin-device-list > .admin-device-card { position: relative; }
+.admin-device-card > button.admin-device-history-link { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0 !important; border: 0 !important; border-radius: 17px; background: transparent !important; box-shadow: none !important; transform: none !important; cursor: pointer; }
+.admin-device-history-link:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: -2px; }
+.admin-device-slider .admin-device-remove { position: relative; z-index: 1; }
+.admin-device-history { padding: 0 2px; }
+.admin-device-history > p { color: var(--text-secondary); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .admin-device-slider { transition: none; } }

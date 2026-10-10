@@ -201,6 +201,19 @@ router.get('/users/:id', async (req, res) => {
   });
 });
 
+router.get('/users/:id/trusted-devices/:deviceId/activity', async (req, res) => {
+  const id = Number(req.params.id);
+  const deviceId = String(req.params.deviceId || '');
+  const device = Number.isInteger(id) ? db.select().from(trustedDevices)
+    .where(and(eq(trustedDevices.id, deviceId), eq(trustedDevices.userId, id))).get() : null;
+  if (!device) return res.status(404).json({ error: 'Trusted device not found.' });
+  const history = sqlite.prepare('SELECT * FROM trusted_device_activity WHERE device_id=? ORDER BY id DESC').all(deviceId);
+  res.json({ history: await Promise.all(history.map(async row => ({
+    id: row.id, ip: row.ip_address, firstSeenAt: row.first_seen_at, lastSeenAt: row.last_seen_at,
+    source: row.source, approximateLocation: await lookupIpLocation(row.ip_address),
+  }))) });
+});
+
 router.patch('/users/:id/beta-features/:featureKey', (req, res) => {
   const id = Number(req.params.id);
   const featureKey = String(req.params.featureKey || '');
@@ -225,7 +238,9 @@ router.delete('/users/:id/trusted-devices/:deviceId', (req, res) => {
   const device = db.select().from(trustedDevices)
     .where(and(eq(trustedDevices.id, deviceId), eq(trustedDevices.userId, id))).get();
   if (!device) return res.status(404).json({ error: 'Trusted device not found' });
-  db.delete(trustedDevices).where(and(eq(trustedDevices.id, deviceId), eq(trustedDevices.userId, id))).run();
+  const now = new Date().toISOString();
+  db.update(trustedDevices).set({ revokedAt: now, expiresAt: device.expiresAt < now ? device.expiresAt : now })
+    .where(and(eq(trustedDevices.id, deviceId), eq(trustedDevices.userId, id))).run();
   res.json({ ok: true, removedDeviceId: deviceId });
 });
 
