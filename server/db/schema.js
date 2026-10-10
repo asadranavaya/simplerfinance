@@ -237,6 +237,7 @@ const trustedDevices = sqliteTable('trusted_devices', {
   createdAt:  text('created_at').notNull(),
   lastUsedAt: text('last_used_at').notNull(),
   lastIp:     text('last_ip'),
+  revokedAt:  text('revoked_at'),
   expiresAt:  text('expires_at').notNull(),
 });
 

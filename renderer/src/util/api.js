@@ -72,6 +72,7 @@ export const api = {
   getAdminUsers:       ()                 => get('/admin/users'),
   getAdminUser:        (id)               => get(`/admin/users/${id}`),
   removeAdminTrustedDevice: (userId, deviceId) => del(`/admin/users/${userId}/trusted-devices/${encodeURIComponent(deviceId)}`),
+  getAdminDeviceActivity: (userId, deviceId) => get(`/admin/users/${userId}/trusted-devices/${encodeURIComponent(deviceId)}/activity`),
   setUserActiveStatus: (id, isActive)     => patch(`/admin/users/${id}/status`, { isActive }),
   deleteAdminUser:     (id)               => del(`/admin/users/${id}`),
   resetUserSimplefinSyncCooldown: (id)     => patch(`/admin/users/${id}/simplefin/reset-sync-cooldown`),

@@ -36,6 +36,19 @@ function requireAuth(req, res, next) {
       email:     user.email,
       role:      user.role,
     };
+    const { trustedDeviceFromCookie, recordRequestDeviceActivity } = require('../lib/trustedDeviceActivity');
+    const deviceId = payload.trustedDeviceId || trustedDeviceFromCookie(req, user.id);
+    if (deviceId) {
+      recordRequestDeviceActivity(req, deviceId);
+      // Bind older sessions on their next auth fetch, where the legacy device
+      // cookie is available. Preserve the original session expiry.
+      if (!payload.trustedDeviceId) {
+        res.cookie('token', jwt.sign({ ...payload, trustedDeviceId: deviceId }, JWT_SECRET), {
+          httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict',
+          maxAge: Math.max(0, payload.exp * 1000 - Date.now()),
+        });
+      }
+    }
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired session' });

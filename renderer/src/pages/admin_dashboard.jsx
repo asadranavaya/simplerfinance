@@ -14,6 +14,22 @@ export default function AdminDashboard() {
   const [updatingId, setUpdatingId] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
+  const [activityDevice, setActivityDevice] = useState(null);
+  const [deviceHistory, setDeviceHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  useEffect(() => {
+    let active = true;
+    if (!activityDevice || !userDetails) return;
+    setHistoryLoading(true);
+    setHistoryError('');
+    setDeviceHistory([]);
+    api.getAdminDeviceActivity(userDetails.id, activityDevice.id)
+      .then(result => { if (active) setDeviceHistory(result.history); })
+      .catch(error => { if (active) setHistoryError(error.message); })
+      .finally(() => { if (active) setHistoryLoading(false); });
+    return () => { active = false; };
+  }, [activityDevice, userDetails]);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [resettingSync, setResettingSync] = useState(false);
   const [syncResetMessage, setSyncResetMessage] = useState('');
@@ -159,6 +175,7 @@ export default function AdminDashboard() {
   };
 
   const openUser = async (user) => {
+    setActivityDevice(null);
     setSelectedUser(user);
     setUserDetails(null);
     setDetailsLoading(true);
@@ -175,6 +192,7 @@ export default function AdminDashboard() {
   };
 
   const closeUser = () => {
+    setActivityDevice(null);
     setSelectedUser(null);
     setUserDetails(null);
     setConfirmingDelete(false);
@@ -222,7 +240,7 @@ export default function AdminDashboard() {
       await api.removeAdminTrustedDevice(userDetails.id, deviceId);
       setUserDetails(current => ({
         ...current,
-        trustedDevices: current.trustedDevices.filter(device => device.id !== deviceId),
+        trustedDevices: current.trustedDevices.map(device => device.id === deviceId ? { ...device, isExpired: true, revokedAt: new Date().toISOString() } : device),
       }));
     } catch (err) {
       setError(err.message);
@@ -411,10 +429,13 @@ export default function AdminDashboard() {
 
                 <div className="admin-devices-heading"><div><h3>Trusted devices</h3><p>Device tokens are hashed. Only safe signature fingerprints are shown.</p></div><ShieldCheck size={22} /></div>
                 {userDetails.trustedDevices.length ? (
-                  <div className="admin-device-list">
+                  <div className={`admin-device-workspace${activityDevice ? ' showing-history' : ''}`}>
+                  <div className="admin-device-slider">
+                  <div className="admin-device-list" aria-hidden={Boolean(activityDevice)} inert={Boolean(activityDevice)}>
                     {userDetails.trustedDevices.map((device) => (
                       <article className="admin-device-card" key={device.id}>
-                        <div className="admin-device-title"><span><Monitor size={19} /></span><div><strong>{device.deviceName}</strong><small className={device.isExpired ? 'expired' : ''}>{device.isExpired ? 'Expired' : 'Trusted until ' + formatDateTime(device.expiresAt)}</small></div><button type="button" className="admin-device-remove" disabled={removingDeviceId === device.id} onClick={() => removeTrustedDevice(device.id)} title="Remove trusted device"><Trash2 size={15} />{removingDeviceId === device.id ? 'Removing…' : 'Remove'}</button></div>
+                        <button type="button" className="admin-device-history-link" aria-label={`View IP and login history for ${device.deviceName}`} onClick={() => setActivityDevice(device)} />
+<div className="admin-device-title"><span><Monitor size={19} /></span><div><strong>{device.deviceName}</strong><small className={device.isExpired ? 'expired' : ''}>{device.isExpired ? 'Expired' : 'Trusted until ' + formatDateTime(device.expiresAt)}</small></div><button type="button" className="admin-device-remove" disabled={device.isExpired || removingDeviceId === device.id} onClick={() => removeTrustedDevice(device.id)} title="Expire trusted device and retain history"><Trash2 size={15} />{removingDeviceId === device.id ? 'Expiring…' : 'Expire'}</button></div>
                         <dl>
                           <div><dt><Fingerprint size={15} /> Signature</dt><dd><code>{device.signature}</code></dd></div>
                           <div><dt><Globe2 size={15} /> Last used IP</dt><dd>{device.lastIp || 'Unavailable'}<small className="admin-ip-location">{device.approximateLocation?.label || 'Approximate location unavailable'}</small></dd></div>
@@ -424,6 +445,18 @@ export default function AdminDashboard() {
                       </article>
                     ))}
                   </div>
+                  <section className="admin-device-history" aria-hidden={!activityDevice} inert={!activityDevice}>
+                    <button type="button" className="admin-back-button" onClick={() => setActivityDevice(null)}><ArrowLeft size={18} /> Trusted devices</button>
+                    <h3>{activityDevice?.deviceName} · IP and login history</h3>
+                    <p>One entry per consecutive IP per UTC day. Last seen updates with authenticated requests.</p>
+                    {historyError && <p role="alert">{historyError}</p>}
+                    {historyLoading ? <p>Loading device history…</p> : !historyError && !deviceHistory.length ? <p>No recorded activity yet.</p> : null}
+                    <div className="admin-device-list">{deviceHistory.map(entry => <article className="admin-device-card" key={entry.id}>
+                      <strong>{entry.ip}</strong><p className="admin-ip-location">{entry.approximateLocation?.label || 'Approximate location unavailable'}</p>
+                      <dl><div><dt>First seen</dt><dd>{formatDateTime(entry.firstSeenAt)}</dd></div><div><dt>Last seen</dt><dd>{formatDateTime(entry.lastSeenAt)}</dd></div><div><dt>Activity</dt><dd>{entry.source === 'request' ? 'Authenticated browser activity' : 'Login'}</dd></div></dl>
+                    </article>)}</div>
+                  </section>
+                  </div></div>
                 ) : <div className="admin-no-devices"><Monitor size={28} /><strong>No trusted devices</strong><span>This user must verify with email at each MFA login.</span></div>}
 
                 {!userDetails.isActive && userDetails.role !== 'admin' && (
