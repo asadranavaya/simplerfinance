@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { to: '/accounts_overview', label: 'Accounts', icon: '💳' },
   { to: '/category-browser', label: 'Analytics', icon: '◒' },
   { to: '/detected-subscriptions', label: 'Subscriptions', icon: '🔄' },
+  { to: '/activity', label: 'Activity', icon: '♧' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -62,7 +63,10 @@ export default function Sidebar({ isMobile, onClose }) {
   }, [account, isAdmin, location.pathname]);
 
   useEffect(() => {
-    setNetWorthHidden(netWorthPrivacyKey ? window.localStorage.getItem(netWorthPrivacyKey) === 'true' : false);
+    const syncPrivacy = () => setNetWorthHidden(netWorthPrivacyKey ? window.localStorage.getItem(netWorthPrivacyKey) === 'true' : false);
+    syncPrivacy();
+    window.addEventListener('budget:privacy-updated', syncPrivacy);
+    return () => window.removeEventListener('budget:privacy-updated', syncPrivacy);
   }, [netWorthPrivacyKey]);
 
   const calculateNetWorth = () => {
@@ -83,11 +87,10 @@ export default function Sidebar({ isMobile, onClose }) {
     }
   };
   const toggleNetWorthVisibility = () => {
-    setNetWorthHidden(hidden => {
-      const next = !hidden;
-      if (netWorthPrivacyKey) window.localStorage.setItem(netWorthPrivacyKey, String(next));
-      return next;
-    });
+    const next = !netWorthHidden;
+    if (netWorthPrivacyKey) window.localStorage.setItem(netWorthPrivacyKey, String(next));
+    setNetWorthHidden(next);
+    window.dispatchEvent(new Event('budget:privacy-updated'));
   };
 
   return (

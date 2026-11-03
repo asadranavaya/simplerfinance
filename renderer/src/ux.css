@@ -1,0 +1,394 @@
+/* Shared customer workspace. Tokens follow all existing appearance palettes. */
+:root {
+  --ux-accent: var(--theme-accent, #6950cc);
+  --ux-tint: rgba(var(--theme-accent-rgb, 105, 80, 204), .09);
+  --ux-paper: var(--bg-secondary, #fff);
+  --ux-page: #f6f7fb;
+  --ux-ink: var(--text-primary, #202333);
+  --ux-muted: var(--text-secondary, #626b7d);
+  --ux-line: var(--border-color, #e7e8ef);
+}
+html[data-theme-mode="dark"] { --ux-page: #171d2c; color-scheme: dark; }
+html[data-theme-mode="light"] { color-scheme: light; }
+body:has(.app-shell) { padding: 0; background: var(--ux-page); }
+#root:has(.app-shell) { padding: 0 !important; margin: 0; max-width: none !important; }
+.app-shell { min-height: 100dvh; color: var(--ux-ink); font-size: 14px; }
+.app-shell.page-grid { display: block; padding-left: 236px; }
+.app-shell:not(.signed-in) { padding-left: 0; }
+body:has(.app-shell) .app-shell > .main-content { margin: 0; padding: 0 !important; min-width: 0; height: auto; min-height: 100dvh; overflow: visible; max-width: none !important; }
+.app-shell .main-content > :is(.page-container, .dashboard-page) { padding: 28px 32px 48px !important; margin: 0 auto; max-width: 1250px !important; width: 100%; box-sizing: border-box; }
+.app-shell .main-content.public-content { width: 100%; padding: 0 !important; }
+.app-shell .page-title, .app-shell .hero-greeting h1 { font-size: 29px; line-height: 1.2; font-weight: 750; margin: 0 0 8px; letter-spacing: -.8px; background: none; -webkit-text-fill-color: var(--ux-ink); color: var(--ux-ink); }
+.app-shell .page-subtitle, .ux-page-description { margin: 0 0 20px; font-size: 13px; color: var(--ux-muted); }
+.app-shell .sidebar { width: 236px; min-width: 0; border-right: 1px solid var(--ux-line); background: var(--ux-paper); box-shadow: none; padding: 22px 16px; }
+.app-shell .sidebar .nav-link { border-radius: 10px; min-height: 45px; font-size: 13px; padding: 10px 13px; margin-bottom: 4px; }
+.app-shell .sidebar .nav-link-active { background: var(--ux-tint); color: var(--ux-accent); box-shadow: none; }
+.app-shell .sidebar .user-profile { padding: 10px; box-shadow: none; border: 0; }
+.app-shell .sidebar .net-worth-widget { box-shadow: none; border: 1px solid var(--ux-line); padding: 16px 10px; }
+.ux-app-header { display: flex; align-items: center; justify-content: space-between; height: 68px; padding: 0 32px; border-bottom: 1px solid var(--ux-line); background: var(--ux-paper); gap: 12px; }
+.ux-wordmark { display: flex; align-items: center; gap: 9px; text-decoration: none; font-size: 16px; font-weight: 750; color: var(--ux-ink); letter-spacing: -.3px; }
+.ux-wordmark > span { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 9px; background: var(--ux-accent); color: white; }
+.ux-header-actions { display: flex; align-items: center; gap: 9px; }
+.ux-avatar { display: grid; place-items: center; width: 34px; height: 34px; color: var(--ux-accent); background: var(--ux-tint); border-radius: 50%; text-decoration: none; font-size: 13px; font-weight: 700; }
+.ux-notification-trigger { position: relative; }
+.ux-notification-dot { position: absolute; top: 0; right: 0; color: white; background: var(--ux-accent); min-width: 16px; height: 16px; padding: 1px 3px; font-size: 9px; border-radius: 12px; }
+:is(.app-shell, .ux-sheet-overlay) :is(.ux-primary, .ux-secondary, .ux-text-button, .ux-icon-button, .ux-danger) { font-family: inherit; font-size: 13px; text-decoration: none; text-transform: none; letter-spacing: normal; box-shadow: none; transform: none; cursor: pointer; border-radius: 10px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 13px; font-weight: 650; }
+:is(.app-shell, .ux-sheet-overlay) .ux-primary { background: var(--ux-accent); color: white; border: 1px solid transparent; }
+:is(.app-shell, .ux-sheet-overlay) .ux-secondary { background: var(--ux-paper); color: var(--ux-ink); border: 1px solid var(--ux-line); }
+:is(.app-shell, .ux-sheet-overlay) .ux-danger { color: #c2444d; border: 1px solid #d95d6540; background: #d95d650c; }
+:is(.app-shell, .ux-sheet-overlay) .ux-text-button { color: var(--ux-accent); background: transparent; border: 0; padding: 6px 2px; }
+:is(.app-shell, .ux-sheet-overlay) .ux-icon-button { padding: 0; min-width: 44px; width: 44px; min-height: 44px; background: transparent; border: 0; box-shadow: none; color: var(--ux-muted); flex-shrink: 0; }
+:is(.app-shell, .ux-sheet-overlay) button:disabled { opacity: .5; cursor: not-allowed; }
+:is(.app-shell, .ux-sheet-overlay) :is(a, button, input, textarea, select):focus-visible { outline: 2px solid var(--ux-accent); outline-offset: 3px; }
+.ux-card, .app-shell :is(.content-card, .full-width-card, .expandable-card) { background: var(--ux-paper); border: 1px solid var(--ux-line); border-radius: 16px; padding: 20px; margin: 0 0 18px; box-shadow: 0 2px 4px #20233303; min-height: 0; color: var(--ux-ink); }
+.app-shell :is(.content-card, .full-width-card, .expandable-card):hover { transform: none; border-color: var(--ux-line); box-shadow: 0 2px 4px #20233303; }
+.app-shell :is(.content-card, .full-width-card, .expandable-card)::after { content: none; }
+.app-shell :is(.section-header, .header-row) { margin-bottom: 16px; gap: 12px; }
+.app-shell .section-title, .app-shell .card-title { font-size: 17px; color: var(--ux-ink); }
+.ux-section-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; }
+.ux-section-line h2 { font-size: 17px; margin: 0; color: var(--ux-ink); }
+.ux-section-line h3 { font-size: 14px; margin: 0; }
+.ux-eyebrow { display: block; text-transform: uppercase; letter-spacing: .7px; color: var(--ux-muted); font-size: 11px; font-weight: 650; }
+.ux-helper { display: block; color: var(--ux-muted); font-size: 12px; line-height: 1.6; margin: 8px 0; }
+.ux-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.app-shell .route-loading { color: var(--ux-muted); background: var(--ux-page); }
+.ux-error { color: var(--danger-color, #c2444d); background: #d95d650c; border-radius: 9px; padding: 12px; font-size: 13px; line-height: 1.6; }
+.ux-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 10px; color: var(--ux-muted); font-size: 13px; }
+.ux-empty p { margin: 0; }
+.ux-search { display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 44px; border: 1px solid var(--ux-line); background: var(--ux-paper); color: var(--ux-muted); border-radius: 11px; padding: 0 12px; margin: 14px 0; }
+.ux-search input { display: block; width: 100%; min-width: 0; height: 44px; margin: 0; padding: 10px 0; background: transparent; border: 0; color: var(--ux-ink); font: inherit; font-size: 14px; box-shadow: none; }
+.ux-search svg { flex-shrink: 0; }
+.ux-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 11px; background: var(--ux-tint); margin: 18px 0; }
+.app-shell .ux-tabs button, .ux-sheet .ux-tabs button { flex: 1; min-height: 42px; padding: 9px 10px; border: 0; box-shadow: none; background: transparent; color: var(--ux-muted); border-radius: 8px; font: inherit; font-weight: 650; font-size: 13px; transform: none; }
+.app-shell .ux-tabs button[aria-pressed="true"], .ux-sheet .ux-tabs button[aria-pressed="true"] { background: var(--ux-paper); color: var(--ux-accent); }
+.ux-purchase-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 36px; gap: 7px 3px; padding: 16px 0; border-top: 1px solid var(--ux-line); min-width: 0; }
+.ux-purchase-row:first-of-type { border-top: 0; }
+.app-shell button.ux-purchase-open { grid-column: 1; display: grid; grid-template-columns: 31px minmax(0, 1fr) auto; gap: 9px; align-items: start; width: 100%; min-width: 0; padding: 0; margin: 0; color: var(--ux-ink); text-align: left; border: 0; box-shadow: none; background: transparent; transform: none; letter-spacing: normal; border-radius: 5px; }
+.ux-vendor-icon { width: 31px; height: 31px; min-width: 31px; object-fit: contain; border-radius: 8px; flex-shrink: 0; }
+.ux-vendor-fallback { display: grid; place-items: center; background: var(--ux-tint); color: var(--ux-accent); font-size: 12px; font-weight: 750; }
+.ux-purchase-copy { min-width: 0; }
+.ux-purchase-copy > strong { font-size: 14px; line-height: 1.45; font-weight: 650; display: block; overflow-wrap: anywhere; }
+.ux-purchase-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ux-muted); font-size: 11px; font-weight: 400; margin-top: 5px; line-height: 1.5; }
+.ux-purchase-meta svg { color: var(--ux-accent); flex-shrink: 0; }
+.ux-purchase-amount { font-weight: 700; white-space: nowrap; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; padding-top: 1px; }
+.ux-purchase-amount small { display: block; margin-top: 4px; color: var(--ux-muted); font-size: 9px; font-weight: 500; }
+.app-shell button.ux-tag-summary { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; min-height: 32px; margin-left: 40px; background: transparent; color: var(--ux-accent); border: 0; box-shadow: none; transform: none; width: fit-content; max-width: calc(100% - 40px); text-align: left; }
+.ux-expanded-tags { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; margin-left: 40px; }
+.ux-chip { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; border-radius: 6px; background: var(--ux-tint); color: var(--ux-accent); padding: 5px 8px; font-size: 11px; font-weight: 600; line-height: 1.5; border: 0; }
+.ux-chip.secondary { background: var(--ux-page); color: var(--ux-muted); }
+.app-shell button.ux-chip { min-height: 44px; padding: 7px 10px; background: var(--ux-tint); color: var(--ux-accent); box-shadow: none; transform: none; font-size: 12px; letter-spacing: normal; }
+.ux-row-menu { grid-column: 2; grid-row: 1 / span 2; align-self: start; position: relative; }
+.ux-row-menu-trigger { margin: -9px -4px 0 0; }
+.ux-row-menu-items { position: absolute; top: 38px; right: -4px; width: min(230px, 75vw); padding: 6px; z-index: 50; border: 1px solid var(--ux-line); border-radius: 12px; background: var(--ux-paper); box-shadow: 0 8px 26px #14152a20; }
+.ux-purchase-menu { position: fixed; right: auto; z-index: 4000; max-height: calc(100dvh - 16px); overflow-y: auto; }
+.ux-purchase-menu button { display: block; width: 100%; text-align: left; background: transparent; color: var(--ux-ink); padding: 11px 10px; min-height: 44px; border-radius: 7px; border: 0; box-shadow: none; font-size: 13px; transform: none; }
+.ux-row-menu-items button:hover { background: var(--ux-tint); }
+.ux-purchase-menu button:focus-visible { outline: 2px solid var(--ux-accent); outline-offset: -2px; }
+.ux-purchase-menu button:disabled { opacity: .5; cursor: not-allowed; }
+.ux-purchase-menu button.danger { color: #c2444d; }
+.ux-purchase-row > .ux-error { grid-column: 1 / -1; }
+.ux-status { border-radius: 5px; padding: 2px 5px; font-size: 10px; background: var(--ux-tint); }
+.ux-status.warning { color: #94611b; background: #fff0d7; }
+.ux-wrapping-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+.ux-sheet-overlay { position: fixed; z-index: 3000; inset: 0; display: flex; justify-content: flex-end; background: #14152a55; color: var(--ux-ink); font-size: 14px; }
+.ux-sheet { display: flex; flex-direction: column; width: 460px; max-width: 100%; height: 100dvh; min-height: 0; padding: 22px; border-left: 1px solid var(--ux-line); background: var(--ux-paper); box-shadow: -8px 0 40px #14152a17; outline: none; }
+.ux-sheet-grabber { display: none; }
+.ux-sheet-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 17px; border-bottom: 1px solid var(--ux-line); }
+.ux-sheet-heading h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.ux-sheet-heading p { font-size: 12px; color: var(--ux-muted); margin: 5px 0 0; overflow-wrap: anywhere; }
+.ux-sheet-heading .ux-icon-button { margin: -8px -8px 0 0; }
+.ux-sheet-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 17px 2px; scrollbar-width: thin; }
+.ux-sheet-footer { padding-top: 14px; border-top: 1px solid var(--ux-line); }
+.ux-sheet-footer > :is(.ux-primary, .ux-secondary) { width: 100%; }
+.ux-confirm-close { display: flex; flex-wrap: wrap; gap: 8px; }
+.ux-confirm-close p { width: 100%; margin: 0; }
+.ux-field { display: flex; flex-direction: column; gap: 7px; font-weight: 650; font-size: 13px; margin: 17px 0; }
+.ux-field :is(input, textarea, select), .ux-sort-label select { background: var(--ux-paper); color: var(--ux-ink); width: 100%; max-width: 100%; min-width: 0; font-family: inherit; font-size: 14px; font-weight: 400; line-height: 1.6; padding: 11px; border-radius: 10px; border: 1px solid var(--ux-line); }
+.ux-field small { color: var(--ux-muted); font-size: 11px; font-weight: 400; }
+.ux-field textarea { resize: vertical; min-height: 104px; }
+:is(.app-shell, .ux-sheet) .appearance-switch { position: relative; min-height: 44px; }
+:is(.app-shell, .ux-sheet) .appearance-switch input { inset: 0; width: 100%; height: 100%; pointer-events: auto; cursor: pointer; z-index: 1; }
+:is(.app-shell, .ux-sheet) .appearance-switch > :is(span, em) { pointer-events: none; }
+.ux-purchase-summary { display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 1.5; }
+.ux-detail-amount { font-size: 31px; font-weight: 750; margin: 14px 0 4px; letter-spacing: -.7px; }
+.ux-advanced { margin: 18px 0; padding: 15px 0; border-top: 1px solid var(--ux-line); }
+.ux-advanced > summary { cursor: pointer; font-size: 13px; font-weight: 650; color: var(--ux-ink); min-height: 32px; padding: 6px 0; }
+.ux-advanced pre { background: var(--ux-page); white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; border-radius: 8px; padding: 10px; font-size: 11px; }
+.ux-reminder-label { display: flex; align-items: center; gap: 7px; font-weight: 650; }
+input.ux-switch { width: 36px; height: 22px; accent-color: var(--ux-accent); }
+.ux-category-option { display: flex; gap: 8px; justify-content: space-between; align-items: center; min-height: 52px; padding: 5px 0; border-bottom: 1px solid var(--ux-line); }
+.ux-category-option label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; min-height: 44px; cursor: pointer; overflow-wrap: anywhere; }
+.ux-category-option input { flex-shrink: 0; width: 19px; height: 19px; accent-color: var(--ux-accent); }
+.ux-category-option .ux-text-button { flex-shrink: 0; font-size: 11px; }
+.ux-color-option { display: flex; align-items: center; justify-content: space-between; font-size: 12px; padding: 7px 0; }
+.ux-color-option input { width: 40px; }
+.ux-month-summary { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 20px; align-items: center; }
+.ux-month-metrics strong { display: block; font-size: 29px; font-weight: 750; letter-spacing: -.7px; margin: 5px 0; }
+.ux-month-metrics small { display: block; color: var(--ux-muted); font-size: 12px; }
+.ux-spending-pie h3 { font-size: 12px; font-weight: 600; color: var(--ux-muted); text-align: center; margin: 0 0 7px; }
+.ux-pie-chart { height: 180px; width: 100%; position: relative; }
+.ux-pie-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.ux-pie-center > span { font-size: 10px; color: var(--ux-muted); }
+.ux-pie-center > strong { font-size: 15px; color: var(--ux-ink); }
+.app-shell .monthly-spending-page .monthly-account-card { padding: 0; overflow: visible; }
+.app-shell .monthly-spending-page .monthly-account-row { min-height: 82px; padding: 14px 16px; border-radius: 15px; grid-template-columns: minmax(0, 1fr) auto 30px; gap: 10px; }
+.app-shell .monthly-account-copy h3 { font-size: 14px; white-space: normal; overflow: visible; text-overflow: unset; }
+.app-shell .monthly-account-institution { display: block; font-size: 11px; color: var(--ux-muted); font-weight: 400; margin-top: 3px; }
+.app-shell .monthly-account-total { width: auto; min-width: 0; }
+.app-shell .monthly-account-total > span { display: none; }
+.app-shell .monthly-account-total strong { font-size: 14px; overflow: visible; }
+.app-shell .monthly-account-chevron { background: transparent !important; box-shadow: none !important; color: var(--ux-muted) !important; min-width: 30px; padding: 0 !important; }
+.app-shell .monthly-spending-page .monthly-account-card .expandable-content { padding: 0 16px 6px; border-top: 1px solid var(--ux-line); }
+.app-shell .monthly-spending-page .expenses-heading { display: none; }
+.app-shell .monthly-spending-page .monthly-month-navigation .section-title { font-size: 18px; }
+.app-shell .monthly-spending-page .monthly-header-actions button:first-child { background: var(--ux-paper); color: var(--ux-accent); border: 1px solid var(--ux-line); box-shadow: none; }
+.app-shell .breadcrumb { font-size: 12px; margin: 4px 0 20px; }
+.ux-overview-metrics { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+.ux-net-worth-hero { background: linear-gradient(115deg, var(--ux-paper), var(--ux-tint)); }
+.ux-net-worth-hero .ux-section-line { margin: 0; }
+.ux-net-worth-hero h2 { color: var(--ux-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+.ux-hero-amount { font-size: 35px; display: block; letter-spacing: -.8px; }
+.ux-net-worth-hero .net-worth-chart { height: 83px; }
+.ux-net-worth-hero .net-worth-chart svg { width: 100%; height: 70px; }
+.ux-net-worth-hero .net-worth-chart-label { display: none; }
+.ux-tracked-total { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--ux-muted); font-size: 12px; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--ux-line); }
+.ux-overview-budget { display: grid; align-content: space-around; gap: 18px; }
+.ux-overview-budget strong { display: block; font-size: 27px; letter-spacing: -.5px; margin: 4px 0; }
+.ux-overview-budget small { color: var(--ux-muted); font-size: 12px; }
+.ux-overview-budget progress { width: 100%; height: 7px; accent-color: var(--ux-accent); }
+.ux-connection-alert { display: flex; align-items: center; gap: 10px; border-radius: 12px; padding: 13px 15px; margin-bottom: 18px; background: #f9ae1c0d; border: 1px solid #d99d3945; color: var(--ux-ink); font-size: 12px; text-decoration: none; }
+.ux-connection-alert > svg { flex-shrink: 0; color: #bd841f; }
+.ux-connection-alert > span:first-of-type { flex: 1; min-width: 0; }
+.ux-connection-alert small { display: block; color: var(--ux-muted); margin-top: 3px; }
+.ux-overview-lists { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+.app-shell .dashboard-page { display: block; }
+.app-shell .dashboard-page .hero-greeting { margin: 0 0 24px; }
+.app-shell .dashboard-page .hero-greeting p { font-size: 13px; }
+.app-shell .dashboard-page .two-column-layout { grid-template-columns: 1fr; }
+.app-shell .dashboard-page .spending-category-card { padding: 20px; }
+.ux-overview-history { margin: 12px 0 24px; }
+.ux-settings-group { background: var(--ux-paper); border-radius: 14px; border: 1px solid var(--ux-line); padding: 0 15px; }
+.ux-setting-row { display: flex; align-items: center; gap: 12px; padding: 15px 0; min-height: 64px; border-top: 1px solid var(--ux-line); color: var(--ux-ink); text-decoration: none; }
+.ux-setting-row:first-child { border-top: 0; }
+.ux-setting-row > span { flex: 1; min-width: 0; }
+.ux-setting-row strong { display: block; font-size: 14px; }
+.ux-setting-row small { display: block; color: var(--ux-muted); margin-top: 4px; font-size: 12px; }
+.ux-settings-group-title { color: var(--ux-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .8px; margin: 20px 0 10px; }
+.app-shell .settings-hub-heading { display: none; }
+.app-shell .settings-hub-grid { display: flex; flex-direction: column; gap: 0; padding: 0 15px; border-radius: 14px; border: 1px solid var(--ux-line); background: var(--ux-paper); }
+.app-shell .settings-hub-card { border: 0 !important; border-bottom: 1px solid var(--ux-line) !important; border-radius: 0 !important; box-shadow: none !important; padding: 13px 0 !important; background: transparent !important; min-height: 66px; }
+.app-shell .settings-hub-card:last-child { border-bottom: 0 !important; }
+.app-shell .settings-hub-card:hover { transform: none !important; }
+.app-shell .settings-detail-toolbar { margin-bottom: 18px; }
+.app-shell .settings-session-card { margin-top: 24px; }
+.app-shell .settings-workspace:not(.showing-detail) .settings-detail-pane { visibility: hidden; }
+.app-shell .settings-workspace.showing-detail .settings-hub { visibility: hidden; }
+.app-shell .simplefin-settings-card > .simplefin-settings-heading h2 { font-size: 22px; }
+.app-shell .simplefin-connection { background: var(--ux-paper); box-shadow: none; border-radius: 14px; }
+.ux-connection-details { margin-bottom: 0; }
+.app-shell .accounts-net-worth { background: var(--ux-tint); border: 1px solid var(--ux-line); box-shadow: none; }
+.app-shell .accounts-net-worth .metric-value { font-size: 27px; color: var(--ux-ink); }
+.app-shell .ux-account-group { padding: 0 17px; }
+.app-shell .ux-account-group > .section-header { padding: 17px 0 7px; margin: 0; }
+.app-shell .ux-account-open { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; color: var(--ux-ink); border: 0; border-top: 1px solid var(--ux-line); border-radius: 0; box-shadow: none; padding: 17px 0; min-width: 0; transform: none; }
+.ux-account-copy { flex: 1; min-width: 0; }
+.ux-account-copy > strong { display: block; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.ux-account-copy > small { display: block; color: var(--ux-muted); font-size: 11px; font-weight: 400; margin: 3px 0 5px; }
+.ux-account-balance { text-align: right; font-weight: 650; font-size: 14px; white-space: nowrap; flex-shrink: 0; }
+.ux-account-balance small { display: block; font-size: 9px; font-weight: 400; color: var(--ux-muted); margin-top: 4px; }
+.ux-account-open > svg { flex-shrink: 0; }
+.ux-analytics-overview[hidden], .category-browser-page > section[hidden] { display: none; }
+.ux-analytics-overview:not(.show-all) .analytics-dashboard-grid > article:nth-child(n+3) { display: none; }
+.ux-analytics-overview:not(.show-all) .analytics-metric-grid > article:nth-child(n+3) { display: none; }
+.ux-split-details .category-split-totals-heading { display: none; }
+.ux-more-charts { width: 100%; margin-bottom: 20px; }
+.ux-explorer-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.ux-explorer-toolbar .ux-search { flex: 1; margin: 0; }
+.ux-sort-label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ux-muted); }
+.ux-sort-label select { min-height: 44px; padding: 8px; font-size: 12px; }
+.ux-explorer-mobile-list { display: none; }
+.ux-table-purchase { display: flex !important; align-items: center; gap: 9px; padding: 0 !important; border: 0; background: transparent !important; box-shadow: none !important; color: var(--ux-ink) !important; font-size: 13px !important; text-align: left; }
+.ux-custom-dates { display: flex; gap: 12px; }
+.ux-custom-dates > label { flex: 1; min-width: 0; }
+.app-shell .analytics-category-list button { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 9px; align-items: center; text-align: left; border: 0; border-bottom: 1px solid var(--ux-line); background: transparent; color: var(--ux-ink); padding: 12px 0; box-shadow: none; font-size: 12px; }
+.analytics-category-list button > i { width: 8px; height: 8px; border-radius: 50%; background: var(--analytics-color); }
+.ux-event { display: flex; align-items: flex-start; gap: 9px; border-top: 1px solid var(--ux-line); padding: 15px 0; }
+.ux-event:first-of-type { border-top: 0; }
+.ux-event-date { flex-shrink: 0; width: 35px; height: 43px; border-radius: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--ux-tint); color: var(--ux-accent); }
+.ux-event-date strong { font-size: 17px; }
+.ux-event-date span { font-size: 9px; text-transform: uppercase; }
+.app-shell button.ux-event-open, .ux-sheet button.ux-event-open { flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 3px; box-shadow: none; background: transparent; color: var(--ux-ink); text-align: left; font: inherit; }
+.ux-event-open > strong { font-size: 14px; font-weight: 650; display: block; overflow-wrap: anywhere; }
+.ux-event-open > time { display: block; font-size: 11px; font-weight: 400; color: var(--ux-muted); margin-top: 4px; }
+.ux-event-open > small { font-size: 12px; color: var(--ux-muted); font-weight: 400; line-height: 1.6; display: block; margin-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ux-event > .ux-icon-button { margin: -8px -9px 0 0; }
+.ux-notice { padding: 16px; border: 1px solid var(--ux-line); border-radius: 13px; background: var(--ux-paper); margin: 12px 0; }
+.ux-notice .ux-section-line { align-items: flex-start; margin: 0 0 12px; }
+.ux-notice time { color: var(--ux-muted); font-size: 10px; white-space: nowrap; padding-top: 4px; }
+.ux-notice h3 { font-size: 14px; margin: 8px 0; }
+.ux-notice > p { color: var(--ux-muted); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.ux-notice-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.ux-activity-page { max-width: 830px !important; }
+.ux-undo { padding: 12px; background: var(--ux-tint); border-radius: 10px; font-size: 12px; }
+.ux-undo .ux-text-button { margin-left: 8px; }
+.app-shell .auth-forgot-link { background: transparent !important; border: 0 !important; color: #c6b5f3 !important; box-shadow: none !important; width: auto; min-height: 44px; margin: 8px auto; display: block; }
+.app-shell .auth-code-input { font-size: 24px; letter-spacing: 8px; text-align: center; }
+.app-shell .auth-page .form-input { min-height: 48px; }
+.ux-bottom-nav { display: none; }
+.ux-subscriptions-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ux-subscription-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.ux-subscription-totals strong { display: block; font-size: 26px; font-weight: 750; margin: 6px 0; }
+.ux-subscription-totals small { display: block; color: var(--ux-muted); font-size: 12px; }
+.app-shell .subscriptions-header, .app-shell .subscription-calendar-launcher, .app-shell .subscription-summary-grid, .app-shell .subscription-calendar-back { display: none; }
+.app-shell .subscriptions-workspace:not(.showing-calendar) .subscriptions-calendar-panel, .app-shell .subscriptions-workspace.showing-calendar .subscriptions-overview-panel { visibility: hidden; }
+.app-shell .subscription-calendar-toolbar { margin: 0 0 14px; }
+.app-shell .subscription-calendar-toolbar h1 { font-size: 19px; }
+.app-shell .subscription-calendar-toolbar .page-eyebrow { display: none; }
+.app-shell button.ux-agenda-purchase { flex: 1; min-width: 0; text-align: left; border: 0; background: transparent; box-shadow: none; color: var(--ux-ink); padding: 0; font: inherit; }
+.ux-agenda-purchase strong { display: block; }
+.ux-agenda-purchase small { display: block; color: var(--ux-muted); font-size: 11px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }
+@media (min-width: 769px) {
+  .ux-month-summary { grid-template-columns: 220px minmax(0, 1fr); gap: 36px; }
+  .ux-month-summary > .ux-spending-pie { grid-column: 1; grid-row: 1; }
+  .ux-month-metrics { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 18px 28px; }
+  .ux-month-metrics > .ux-text-button { grid-column: 1 / -1; justify-self: start; }
+  .app-shell .analytics-dashboard-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .app-shell .analytics-trend-card { grid-column: auto; }
+  .app-shell .analytics-category-layout { grid-template-columns: 1fr; }
+  .app-shell .analytics-donut { width: 240px; max-width: 100%; height: 230px; margin: 0 auto; }
+  .ux-purchase-inspector .ux-sheet { width: 460px; }
+}
+@media (min-width: 1100px) {
+  .ux-purchase-row { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 44px; column-gap: 24px; align-items: center; }
+  .app-shell button.ux-purchase-open { grid-column: 1; grid-row: 1; align-items: center; }
+  .ux-expanded-tags { grid-column: 2; grid-row: 1; margin-left: 0; }
+  .ux-row-menu { grid-column: 3; grid-row: 1; align-self: center; }
+  .ux-row-menu-trigger { margin: 0; }
+  .ux-overview-lists .ux-purchase-row { grid-template-columns: minmax(0, 1fr) 36px; }
+  .ux-overview-lists .ux-expanded-tags { grid-column: 1; grid-row: 2; margin-left: 40px; }
+}
+@media (max-width: 768px) {
+  .app-shell.page-grid { padding: 0; }
+  .app-shell .main-content:not(.public-content) > :is(.page-container, .dashboard-page) { padding: 20px 18px calc(100px + env(safe-area-inset-bottom)) !important; }
+  .app-shell > .main-content { overflow-x: clip; }
+  .ux-app-header { height: 62px; padding: max(8px, env(safe-area-inset-top)) 18px 8px; position: sticky; top: 0; z-index: 80; }
+  .ux-wordmark { font-size: 15px; }
+  .ux-header-actions { gap: 5px; }
+  .ux-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: flex-start; justify-content: space-around; background: var(--ux-paper); border-top: 1px solid var(--ux-line); padding: 6px max(6px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); min-height: 70px; }
+  .ux-bottom-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 48px; flex: 1; color: var(--ux-muted); text-decoration: none; font-size: 10px; font-weight: 550; border-radius: 8px; }
+  .ux-bottom-nav .is-active { color: var(--ux-accent); background: var(--ux-tint); }
+  .app-shell .page-title, .app-shell .hero-greeting h1 { font-size: 25px; }
+  .app-shell :is(.content-card, .full-width-card), .ux-card { padding: 16px; border-radius: 14px; margin-bottom: 14px; }
+  .ux-sheet-overlay { align-items: flex-end; justify-content: center; }
+  .ux-sheet { width: 100%; max-width: 620px; max-height: calc(100dvh - max(24px, env(safe-area-inset-top))); height: auto; min-height: min(650px, 90dvh); border-radius: 22px 22px 0 0; border-left: 0; padding: 10px 19px max(14px, env(safe-area-inset-bottom)); }
+  .ux-sheet-grabber { display: block; width: 34px; height: 4px; border-radius: 3px; background: var(--ux-line); margin: 0 auto 15px; flex-shrink: 0; }
+  .ux-sheet-heading { flex-shrink: 0; padding-bottom: 12px; }
+  .ux-sheet-heading h2 { font-size: 19px; }
+  .ux-sheet-body { padding-top: 12px; }
+  .ux-sheet-footer { flex-shrink: 0; padding-top: 10px; }
+  .ux-sheet-footer .ux-helper { margin: 6px 0 0; font-size: 11px; }
+  .ux-field :is(input, textarea, select), .ux-search input { font-size: 16px; }
+  .ux-month-summary { grid-template-columns: minmax(0, 1fr) 145px; gap: 9px; padding: 14px !important; }
+  .ux-month-metrics strong { font-size: clamp(20px, 5.7vw, 27px); overflow-wrap: anywhere; }
+  .ux-month-metrics small { font-size: 10px; }
+  .ux-month-budget { margin-top: 10px; }
+  .ux-month-budget strong { font-size: 16px; }
+  .ux-month-budget > small { display: none; }
+  .ux-month-metrics .ux-text-button { font-size: 11px; }
+  .ux-pie-chart { height: 142px; }
+  .ux-spending-pie h3 { font-size: 10px; }
+  .ux-pie-center > strong { font-size: 12px; }
+  .ux-pie-center > span { font-size: 9px; }
+  .app-shell .monthly-spending-page .monthly-account-row { grid-template-columns: minmax(0, 1fr) auto 24px; gap: 7px; padding: 12px; }
+  .app-shell .monthly-account-copy h3 { font-size: 13px; }
+  .app-shell .monthly-account-institution { font-size: 10px; }
+  .app-shell .monthly-spending-page .monthly-account-card .expandable-content { padding: 0 12px 5px; }
+  .app-shell .monthly-spending-page .monthly-header-actions button { min-height: 44px; font-size: 12px; }
+  .ux-purchase-row { grid-template-columns: minmax(0, 1fr) 27px; padding: 15px 0; }
+  .app-shell button.ux-purchase-open { grid-template-columns: 27px minmax(0, 1fr) auto; gap: 7px; }
+  .ux-vendor-icon { width: 27px; height: 27px; min-width: 27px; }
+  .ux-purchase-copy > strong { font-size: 13px; }
+  .ux-purchase-amount { font-size: 13px; }
+  .ux-purchase-meta { font-size: 10px; }
+  .ux-row-menu-trigger { margin-right: -9px; }
+  .app-shell button.ux-tag-summary { margin-left: 34px; max-width: calc(100% - 34px); }
+  .ux-overview-metrics, .ux-overview-lists { display: block; }
+  .ux-net-worth-hero .net-worth-chart { height: 65px; }
+  .ux-net-worth-hero .net-worth-chart svg { height: 55px; }
+  .ux-hero-amount { font-size: 30px; }
+  .ux-overview-budget { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ux-overview-budget progress { grid-column: 1/-1; }
+  .ux-overview-budget strong { font-size: 22px; }
+  .ux-overview-budget small { font-size: 10px; }
+  .ux-overview-lists .ux-purchase-row:nth-of-type(n+3) { display: none; }
+  .ux-connection-alert { padding: 11px 12px; }
+  .ux-connection-alert > span:last-child:not(:first-of-type) { font-size: 11px; }
+  .app-shell .analytics-metric-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .app-shell .analytics-metric-grid article { display: block; padding: 13px; }
+  .app-shell .analytics-metric-grid strong { font-size: 21px; margin: 6px 0; }
+  .app-shell .analytics-metric-grid small { font-size: 10px; }
+  .ux-explorer-mobile-list { display: block; }
+  .ux-explorer-desktop-table { display: none; }
+  .ux-explorer-toolbar { gap: 8px; }
+  .ux-explorer-toolbar .ux-search { flex: 1 0 100%; }
+  .ux-sort-label { flex: 1; justify-content: flex-end; }
+  .ux-sort-label select { width: auto; max-width: 160px; }
+  .app-shell .analytics-donut { width: 220px; height: 220px; margin: 0 auto; }
+  .app-shell .analytics-category-layout { grid-template-columns: 1fr; }
+  .app-shell .analytics-browser-heading { display: none; }
+  .ux-sheet .category-browser-controls { display: flex; flex-direction: column; gap: 12px; }
+  .ux-sheet .category-browser-controls .form-group { width: 100%; }
+  .ux-sheet .category-browser-controls input, .ux-sheet .category-browser-controls select { max-width: 100%; font-size: 16px; }
+  .ux-sheet .category-browser-date-controls { display: block; }
+  .app-shell .ux-account-group { padding: 0 13px; }
+  .ux-account-copy > strong, .ux-account-balance { font-size: 13px; }
+  .ux-account-open .account-connection-badge { font-size: 10px; }
+  .ux-account-open > svg { width: 13px; }
+  .ux-notice .ux-section-line { flex-wrap: wrap; gap: 6px; }
+  .app-shell .subscriptions-table, .app-shell .subscriptions-table tbody { display: block; width: 100%; }
+  .app-shell .subscriptions-table thead { display: none; }
+  .app-shell .subscriptions-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 15px 0; border-bottom: 1px solid var(--ux-line); }
+  .app-shell .subscriptions-table td { display: block; padding: 0; border: 0; min-width: 0; white-space: normal; }
+  .app-shell .subscriptions-table td:first-child { grid-column: 1; font-size: 14px; }
+  .app-shell .subscriptions-table td:nth-child(2) { grid-column: 2; grid-row: 1; font-size: 15px; font-weight: 700; }
+  .app-shell .subscriptions-table td:nth-child(3) { grid-column: 1/-1; font-size: 12px; color: var(--ux-muted); }
+  .app-shell .subscriptions-table td:nth-child(3)::before { content: 'Next estimated: '; }
+  .app-shell .subscriptions-table td:nth-child(4), .app-shell .subscriptions-table td:nth-child(5) { color: var(--ux-muted); font-size: 11px; }
+  .app-shell .subscriptions-table td:nth-child(4)::before { content: 'Total paid: '; }
+  .app-shell .subscriptions-table td:nth-child(5)::before { content: 'Detected: '; }
+  .app-shell .subscriptions-table td:nth-child(n+6) { grid-column: 1/-1; text-align: left; }
+  .app-shell .subscription-row-actions { justify-content: flex-start; gap: 12px; }
+  .app-shell .subscription-row-actions button { min-height: 44px; }
+  .app-shell .subscription-summary-grid { gap: 8px; }
+  .app-shell .subscription-summary-grid .content-card { padding: 12px; }
+  .app-shell .subscription-stat-value { font-size: 24px; }
+  .app-shell .subscription-summary-grid h3 { font-size: 11px; }
+  .app-shell .subscription-calendar-layout { display: flex; flex-direction: column; gap: 14px; }
+  .app-shell .subscription-calendar-card { order: 0; width: 100%; }
+  .app-shell .subscription-calendar-agenda { order: 1; width: 100%; }
+  .app-shell .subscription-calendar-toolbar h1 { display: none; }
+  .app-shell .subscription-calendar-card { overflow: visible; }
+  .app-shell :is(.subscription-calendar-month-header, .subscription-calendar-weekdays, .subscription-calendar-grid) { min-width: 0; width: 100%; }
+  .app-shell .subscription-calendar-month-header { padding: 12px; gap: 7px; }
+  .app-shell .subscription-calendar-grid { padding: 5px; }
+  .app-shell .subscription-calendar-icon-stack { min-height: 20px; }
+  .app-shell .subscription-calendar-icon-stack > span { flex-basis: 20px; width: 20px; height: 20px; border-radius: 5px; margin-left: -5px; }
+  .app-shell .subscription-calendar-icon-stack img { width: 16px; height: 16px; }
+  .app-shell .subscription-calendar-day { min-height: 49px; padding: 4px 1px; }
+  .app-shell .admin-workspace-heading h1 { font-size: 27px; }
+  .app-shell .admin-workspace-back { min-height: 44px; }
+  .app-shell .hamburger-btn { top: 12px; left: 16px; right: auto; z-index: 120; }
+  .admin-shell .ux-wordmark { margin-left: 48px; font-size: 13px; }
+}
+@media (max-width: 360px) {
+  .app-shell .main-content:not(.public-content) > :is(.page-container, .dashboard-page) { padding-left: 13px !important; padding-right: 13px !important; }
+  .ux-month-summary { grid-template-columns: minmax(0, 1fr) 128px; }
+  .ux-pie-chart { height: 130px; }
+  .ux-purchase-row { grid-template-columns: minmax(0, 1fr) 22px; }
+  .app-shell button.ux-purchase-open { gap: 6px; grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .ux-purchase-copy > strong, .ux-purchase-amount { font-size: 12px; }
+  .ux-vendor-icon { width: 24px; height: 24px; min-width: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *, .ux-sheet-overlay * { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

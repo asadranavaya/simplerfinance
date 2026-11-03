@@ -16,6 +16,7 @@
     "create-admin": "node scripts/create-admin.js",
     "create-user": "node scripts/create-user.js",
     "test": "node --require ./test/setup.js --test test/*.test.js",
+    "test:ux": "npm run build && node --require ./test/setup.js test/customerUx.browser.cjs",
     "backup": "node scripts/backup-db.js",
     "verify-backup": "node scripts/verify-backup.js",
     "check:public": "node scripts/check-public-release.js",
@@ -28,7 +29,8 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.10",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "playwright": "1.64.1"
   },
   "allowScripts": {
     "better-sqlite3@12.10.0": true,

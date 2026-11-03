@@ -149,6 +149,15 @@ router.get('/expense/:id/diagnostics', (req, res) => {
     diagnosticsEnabled,
     purchase: {
       id: expense.id,
+      year: parent.year,
+      month: parent.month,
+      cardId: parent.cardId,
+      icon: resolveExpenseIcon(expense, metadata),
+      source: metadata.source || 'manual',
+      split: metadata.split || null,
+      originalAmount: expense.amount,
+      paidAmount: customerPaidAmount(expense.amount, metadata.split),
+      mainCategory: normalizeExpenseCategories(metadata).mainCategory || expense.category,
       description: expense.description,
       amount: expense.amount,
       date: expense.date,
@@ -353,16 +362,16 @@ router.delete('/expense/:id', (req, res) => {
 
   const existing = db.select().from(expenses).where(eq(expenses.id, req.params.id)).get();
   if (!existing) return res.json(true); // already gone, idempotent
-  if (parseExpenseData(existing).source === 'simplefin') {
-    db.update(expenses).set({ hiddenAt: new Date().toISOString() }).where(eq(expenses.id, req.params.id)).run();
-    return res.json({ hidden: true });
-  }
-
   // Verify ownership via parent monthly_spending record
   const record = db.select().from(monthlySpending)
     .where(and(eq(monthlySpending.id, existing.spendingId), eq(monthlySpending.userId, userId)))
     .get();
   if (!record) return res.status(403).json({ error: 'Forbidden' });
+
+  if (parseExpenseData(existing).source === 'simplefin') {
+    db.update(expenses).set({ hiddenAt: new Date().toISOString() }).where(eq(expenses.id, req.params.id)).run();
+    return res.json({ hidden: true });
+  }
 
   db.delete(expenses).where(eq(expenses.id, req.params.id)).run();
   res.json(true);

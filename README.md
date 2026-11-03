@@ -164,12 +164,15 @@ npm run bootstrap           # exact root and renderer dependency installation
 npm run server              # API only
 npm run build               # production frontend
 npm test                    # Node test suite
+npm run test:ux             # build + real-API browser checks with isolated synthetic data
 npm run create-admin -- ... # create or promote an administrator
 npm run create-user -- ...  # create a verified local finance user
 npm run backup              # create an application database backup
 npm run verify-backup       # validate the newest backup
 npm run hot-reload          # build and restart the PM2 budget-api process
 ```
+
+For browser checks, install Chromium once with `npx playwright install chromium` (Linux CI may need `--with-deps`). `test:ux` creates a private temporary database, tests phone/tablet/desktop layouts and purchase workflows, and prints a screenshot directory. It does not use customer records or start sync jobs.
 
 ## Runtime data and backup boundaries
 

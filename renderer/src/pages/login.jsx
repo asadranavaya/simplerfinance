@@ -251,6 +251,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  autoComplete="one-time-code"
                   pattern="[0-9]{6}"
                   maxLength={6}
                   value={otp}

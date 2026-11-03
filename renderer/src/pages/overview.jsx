@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
+import OverviewSummary from '../components/OverviewSummary';
 
 import { useTheme } from '../util/ThemeContext';
 import {
@@ -47,12 +48,21 @@ export default function OverviewPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [categoryTimeRange, setCategoryTimeRange] = useState('ytd');
   const [categoryTotal, setCategoryTotal] = useState(0);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (account?.id) {
-      loadAll();
+      loadAll().catch(error => setLoadError(error.message || 'Unable to load your overview.'));
     }
   // loadAll is intentionally tied to account changes, not recreated helper identities.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account]);
+
+  useEffect(() => {
+    const refresh = () => loadAll().catch(error => setLoadError(error.message));
+    window.addEventListener('budget:purchases-updated', refresh);
+    return () => window.removeEventListener('budget:purchases-updated', refresh);
+  // Keep recent purchases and charts synchronized with the shared sheet.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
 
@@ -70,6 +80,7 @@ export default function OverviewPage() {
       api.getAllSpending(),
     ]);
     console.log('[overview] spending records loaded:', spending?.length, 'profile:', profile?.monthlyIncome);
+    setLoadError('');
     setFinancialProfile(profile);
     setAllSpending(spending);
     computeLast5Months(spending, 0, profile);
@@ -362,52 +373,10 @@ export default function OverviewPage() {
         </p>
       </div>
 
-      {/* Settings Button */}
-      <div className="settings-dropdown dashboard-settings-dropdown">
-        <button
-          onClick={() => navigate(('/settings'))}
-          className="settings-button"
-        >
-          ⚙️
-        </button>
-      </div>
-
+      {loadError && <p className="ux-error" role="alert">{loadError} <button type="button" className="ux-text-button" onClick={() => loadAll().catch(error => setLoadError(error.message))}>Try again</button></p>}
+      <OverviewSummary profile={financialProfile} spending={allSpending} />
+      <details className="ux-advanced ux-overview-history"><summary>Spending history & category charts</summary>
       <div className="two-column-layout">
-        {/* Financial Profile Card */}
-        <div className="financial-profile-card content-card">
-          <div className="section-header">
-            <h2 className="card-title">💼 Financial Profile</h2>
-          </div>
-          {financialProfile ? (
-            <div>
-              <div className="profile-info-row">
-                <div className="info-icon-circle emerald">💵</div>
-                <span className="info-label">Monthly Income</span>
-                <span className="info-value">${(financialProfile.monthlyIncome || 0).toLocaleString()}</span>
-              </div>
-              <div className="profile-info-row">
-                <div className="info-icon-circle cyan">🏦</div>
-                <span className="info-label">After Tax (Monthly)</span>
-                <span className="info-value">${((financialProfile?.yearlyIncomeAfterTax || 0) / 12).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
-              </div>
-              <div className="profile-info-row">
-                <div className="info-icon-circle orange">📊</div>
-                <span className="info-label">Yearly Income</span>
-                <span className="info-value">${(financialProfile.yearlyIncome || 0).toLocaleString()}</span>
-              </div>
-              <div className="profile-info-row last">
-                <div className="info-icon-circle pink">🎯</div>
-                <span className="info-label">Savings Target</span>
-                <span className="info-value">${((financialProfile.yearlyIncome || 0) * ((financialProfile.percentToSave || 0) / 100) / 12).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
-              </div>
-            </div>
-          ) : (
-            <p className="content-empty-state">
-              Add your financial information in Settings
-            </p>
-          )}
-        </div>
-
         {/* Monthly Spending Chart Card */}
         <div className="content-card">
           <div className="section-header">
@@ -520,6 +489,7 @@ export default function OverviewPage() {
         </div>
       </div>
 
+      </details>
       {/* Financial Goals Full Width Card */}
       <div className="content-card full-width-content-card">
         <div className="section-header">

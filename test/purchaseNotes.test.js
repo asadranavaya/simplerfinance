@@ -56,11 +56,31 @@ test('purchase notes are available to owners while diagnostic metadata remains f
     assert.equal(basic.diagnosticsEnabled, false);
     assert.equal(basic.purchase.notes, 'Initial note');
     assert.equal(basic.purchase.reportingCurrency, 'CAD');
+    assert.equal(basic.purchase.year, 2026);
+    assert.equal(basic.purchase.month, 10);
+    assert.equal(basic.purchase.cardId, cardId);
+    assert.equal(basic.purchase.source, 'manual');
+    assert.equal(basic.purchase.originalAmount, 42);
+    assert.equal(basic.purchase.paidAmount, 42);
+    assert.equal(basic.purchase.mainCategory, 'Food');
     assert.equal('metadata' in basic.purchase, false);
     assert.equal('simplefin' in basic, false);
 
     const forbidden = await fetch(`${base}/api/spending/expense/${expenseId}/diagnostics`, { headers: { cookie: `token=${otherToken}` } });
     assert.equal(forbidden.status, 404);
+
+    const importedId = `imported-${crypto.randomUUID()}`;
+    db.insert(expenses).values(protectExpenseRecord(sqlite, ownerAccountId, {
+      id: importedId, spendingId, description: 'Synced purchase', amount: 12,
+      category: 'Food', date: '2026-10-09', data: JSON.stringify({ source: 'simplefin' }),
+    })).run();
+    const hiddenByOther = await fetch(`${base}/api/spending/expense/${importedId}`, { method: 'DELETE', headers: { cookie: `token=${otherToken}` } });
+    assert.equal(hiddenByOther.status, 403, 'Another customer must not hide a synced purchase');
+    assert.equal(db.select().from(expenses).where(eq(expenses.id, importedId)).get().hiddenAt, null);
+    const hiddenByOwner = await fetch(`${base}/api/spending/expense/${importedId}`, { method: 'DELETE', headers });
+    assert.equal(hiddenByOwner.status, 200);
+    assert.equal((await hiddenByOwner.json()).hidden, true);
+    assert.ok(db.select().from(expenses).where(eq(expenses.id, importedId)).get().hiddenAt);
 
     const savedResponse = await fetch(`${base}/api/spending/expense/${expenseId}`, {
       method: 'PATCH',
