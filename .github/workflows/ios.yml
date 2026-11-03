@@ -1,0 +1,47 @@
+name: Build iPhone simulator app
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_origin:
+        description: HTTPS origin of the SimplerFinance server
+        type: string
+        required: true
+        default: https://simplerfinance.net
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      VITE_API_ORIGIN: ${{ inputs.server_origin }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            renderer/package-lock.json
+      - name: Install dependencies
+        run: npm run bootstrap
+      - name: Build packaged frontend and sync iOS
+        run: npm run ios:sync
+      - name: Build unsigned simulator app
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App
+          -configuration Debug -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build
+      - name: Package simulator app
+        run: ditto -c -k --sequesterRsrc --keepParent build/ios/Build/Products/Debug-iphonesimulator/App.app build/SimulatorApp.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SimplerFinance-iPhone-Simulator
+          path: build/SimulatorApp.zip
+          if-no-files-found: error
+          retention-days: 7

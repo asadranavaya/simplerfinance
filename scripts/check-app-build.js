@@ -1,0 +1,10 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const config = require('../capacitor.config.json');
+const output = path.resolve(__dirname, '..', config.webDir);
+assert.equal(config.server?.url, undefined, 'Ship packaged assets, not a live-reload website URL');
+assert.ok(fs.existsSync(path.join(output, 'index.html')), 'Build the app frontend first');
+const chunks = fs.readdirSync(path.join(output, 'assets'));
+assert.ok(!chunks.some(file => /jspdf|pdfjs|html2canvas|ImportCsv|admin_dashboard/i.test(file)), 'PDF, file import, and admin chunks must be absent');
+console.log(`App build verified: bundled frontend in ${config.webDir}; PDF/file import/admin modules excluded by Vite.`);

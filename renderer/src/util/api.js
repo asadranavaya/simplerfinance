@@ -3,6 +3,8 @@
  * userId is derived server-side from the JWT; no need to pass it here.
  */
 
+import { apiFetch } from './appRuntime';
+import { FILE_UPLOADS_ENABLED } from './appFeatures';
 const BASE = '/api';
 
 function exposeServerFailure(response) {
@@ -13,7 +15,7 @@ function exposeServerFailure(response) {
 }
 
 async function req(method, path, body) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await apiFetch(`${BASE}${path}`, {
     method,
     credentials: 'include',
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
@@ -88,6 +90,7 @@ export const api = {
   reviewIconSubmission: (id, status, reason = '') => patch(`/admin/icon-submissions/${id}`, { status, reason }),
   getApprovedIconRules: ()                  => get('/admin/icon-rules'),
   updateApprovedIconRule: async (id, formData) => {
+    if (!FILE_UPLOADS_ENABLED) throw new Error('File uploads are available on the website.');
     const icon = formData.get('icon');
     if (icon instanceof File && icon.size > 1024 * 1024) throw new Error('Icon uploads must be 1 MB or smaller.');
     if (icon instanceof File && (icon.type === 'image/svg+xml' || icon.name.toLowerCase().endsWith('.svg')) && icon.size > 256 * 1024) throw new Error('SVG icon uploads must be 256 KB or smaller.');
@@ -120,6 +123,7 @@ export const api = {
   getBetaFeatures: () => get('/spending/beta-features'),
   getExpenseDiagnostics: (id) => get(`/spending/expense/${encodeURIComponent(id)}/diagnostics`),
   submitIcon: async (formData) => {
+    if (!FILE_UPLOADS_ENABLED) throw new Error('File uploads are available on the website.');
     const icon = formData.get('icon');
     if (icon instanceof File && icon.size > 1024 * 1024) throw new Error('Icon uploads must be 1 MB or smaller.');
     if (icon instanceof File && (icon.type === 'image/svg+xml' || icon.name.toLowerCase().endsWith('.svg')) && icon.size > 256 * 1024) throw new Error('SVG icon uploads must be 256 KB or smaller.');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import PurchaseRow from '../components/PurchaseRow';
@@ -10,7 +10,9 @@ import { api } from '../util/api';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { ChevronLeft, ChevronRight, Search, Upload } from "lucide-react";
-import ImportModal from '../util/ImportCsv';
+import { FILE_UPLOADS_ENABLED } from '../util/appFeatures';
+import VendorIcon from '../components/VendorIcon';
+const ImportModal = FILE_UPLOADS_ENABLED ? lazy(() => import('../util/ImportCsv')) : null;
 import SplitPurchaseFields from '../components/SplitPurchaseFields';
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
@@ -492,14 +494,14 @@ export default function MonthlySpendingPage() {
         </div>
         <div className="monthly-header-actions">
 
-          <button
+          {FILE_UPLOADS_ENABLED && <button
             onClick={() => setShowImportModal(true)}
             className="btn-primary"
             disabled={!activeAccounts.length}
             title={!activeAccounts.length ? 'Reactivate an account before importing expenses' : undefined}
           >
             <div className="import-button-copy">Import <Upload size={24} /></div>
-          </button>
+          </button>}
           <button
             onClick={() => { setExpenseFormError(''); setShowAddModal(true); }}
             className="btn-primary"
@@ -541,7 +543,7 @@ export default function MonthlySpendingPage() {
               <div className="monthly-account-identity">
                 <div className="monthly-account-icon">
                   {card.icon ? (
-                    <img className="entity-icon" src={card.icon.url} alt="" />
+                    <VendorIcon className="entity-icon" src={card.icon.url} alt="" />
                   ) : (
                     <button
                       type="button"
@@ -549,10 +551,12 @@ export default function MonthlySpendingPage() {
                       title="Suggest an account icon"
                       onClick={(event) => {
                         event.stopPropagation();
+                        if (!FILE_UPLOADS_ENABLED) return;
                         const name = card.institution || card.nickname || card.name;
                         setIconSubmissionError('');
                         setIconDraft({ entityType:'institution', displayName:name, pattern:name, exampleText:`${card.nickname || card.name} - ${card.institution || ''}` });
                       }}
+                      disabled={!FILE_UPLOADS_ENABLED}
                     >
                       {(card.institution || card.nickname || card.name).slice(0,1).toUpperCase()}
                     </button>
@@ -595,7 +599,7 @@ export default function MonthlySpendingPage() {
                       { label: 'Remember merchant', onClick: () => openMerchantRule({ ...expense, cardId: card.id }), disabled: rememberingExpenseId === expense.id || rememberedExpenseIds.has(expense.id) || !expense.mainCategory || expense.mainCategory.toLocaleLowerCase() === 'uncategorized' },
                       { label: 'Split purchase', onClick: () => openSplitPurchase(expense) },
                       { label: 'Edit purchase', onClick: () => openExpenseEditor(expense, card.id) },
-                      { label: 'Suggest vendor icon', onClick: () => { setIconSubmissionError(''); setIconDraft({ entityType: 'merchant', displayName: expense.description, pattern: expense.providerDescription || expense.description, exampleText: expense.providerDescription || expense.description }); } },
+                      ...(FILE_UPLOADS_ENABLED ? [{ label: 'Suggest vendor icon', onClick: () => { setIconSubmissionError(''); setIconDraft({ entityType: 'merchant', displayName: expense.description, pattern: expense.providerDescription || expense.description, exampleText: expense.providerDescription || expense.description }); } }] : []),
                       { label: expense.source === 'simplefin' ? 'Hide expense' : 'Delete expense', onClick: () => deleteExpense(expense, card.id), disabled: deletingExpenseId === expense.id, danger: true },
                     ]} />
                   ))
@@ -638,7 +642,7 @@ export default function MonthlySpendingPage() {
           <SplitPurchaseFields people={splitPeople} draft={splitDraft} setDraft={setSplitDraft} maximum={splitMaximum} assigned={splitAssigned} saving={savingSplit} formatMoney={formatMoney} />
         </form>
       </div>, document.body)}
-      {iconDraft && createPortal(<div className="modal-overlay" onMouseDown={() => setIconDraft(null)}><form className="modal-content" onSubmit={submitIconSuggestion} onMouseDown={event => event.stopPropagation()}>
+      {FILE_UPLOADS_ENABLED && iconDraft && createPortal(<div className="modal-overlay" onMouseDown={() => setIconDraft(null)}><form className="modal-content" onSubmit={submitIconSuggestion} onMouseDown={event => event.stopPropagation()}>
         <button type="button" className="btn-close" onClick={() => setIconDraft(null)}>×</button><h3 className="modal-title">Suggest company icon</h3>
         <p>The icon will appear only after admin review and approval.</p>{iconSubmissionError && <p className="category-rule-error">{iconSubmissionError}</p>}
         <input type="hidden" name="entityType" value={iconDraft.entityType} /><input type="hidden" name="exampleText" value={iconDraft.exampleText} />
@@ -871,7 +875,7 @@ export default function MonthlySpendingPage() {
       )
       }
 
-      <ImportModal
+      {FILE_UPLOADS_ENABLED && showImportModal && <Suspense fallback={<p role="status">Loading import tools…</p>}><ImportModal
         showImportModal={showImportModal}
         setShowImportModal={setShowImportModal}
         creditCards={activeAccounts}
@@ -914,7 +918,7 @@ export default function MonthlySpendingPage() {
             }
           });
         }}
-      />
+      /></Suspense>}
 
     </div >
   );

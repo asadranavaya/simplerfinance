@@ -17,6 +17,11 @@
     "create-user": "node scripts/create-user.js",
     "test": "node --require ./test/setup.js --test test/*.test.js",
     "test:ux": "npm run build && node --require ./test/setup.js test/customerUx.browser.cjs",
+    "app:build": "npm run build --prefix renderer -- --mode app && node scripts/check-app-build.js",
+    "app:preview": "npm run dev --prefix renderer -- --mode app-preview",
+    "test:app": "npm run build --prefix renderer -- --mode app-preview && node scripts/check-app-build.js && UX_APP_BUILD=1 UX_WIDTHS=390 node --require ./test/setup.js test/customerUx.browser.cjs",
+    "ios:sync": "npm run app:build && cap sync ios",
+    "ios:open": "cap open ios",
     "backup": "node scripts/backup-db.js",
     "verify-backup": "node scripts/verify-backup.js",
     "check:public": "node scripts/check-public-release.js",
@@ -27,6 +32,8 @@
   "license": "MIT",
   "description": "A self-hosted personal-finance and budgeting application",
   "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "@capacitor/ios": "8.6.0",
     "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.10",
     "nodemon": "^3.1.14",
@@ -37,6 +44,8 @@
     "bcrypt@6.0.0": true
   },
   "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.11.1",
     "cookie-parser": "^1.4.7",

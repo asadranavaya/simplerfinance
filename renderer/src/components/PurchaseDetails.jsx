@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
 import { ArrowLeft, Bell, Check, Plus, Search } from 'lucide-react';
 import Sheet from './Sheet';
+import VendorIcon from './VendorIcon';
 import SplitPurchaseFields from './SplitPurchaseFields';
 import { purchaseMoney } from '../util/formatting';
 import { api } from '../util/api';
@@ -120,7 +121,7 @@ export default function PurchaseDetails({ expenseId, initialMode, onClose }) {
       <details className="ux-advanced"><summary>Category colors</summary>{categories.filter(category => typeof category !== 'string').map(category => <label className="ux-color-option" key={category.name}>{category.name}<input type="color" aria-label={`Color for ${category.name}`} value={category.color || '#6950cc'} onChange={async event => { try { setCategories(await api.updateCategory(category.name, event.target.value)); announcePurchaseUpdate({ id: expenseId }); } catch (error) { setError(error.message); } }} /></label>)}</details>
     </>}
     {draft && mode !== 'tags' && <>
-      <div className="ux-purchase-summary">{data.purchase.icon?.url && <img className="ux-vendor-icon" src={data.purchase.icon.url} alt="" />}<strong>{data.purchase.description}</strong></div>
+      <div className="ux-purchase-summary">{data.purchase.icon?.url && <VendorIcon className="ux-vendor-icon" src={data.purchase.icon.url} alt="" />}<strong>{data.purchase.description}</strong></div>
       <p className="ux-detail-amount">{purchaseMoney(data.purchase.paidAmount ?? data.purchase.amount, data.purchase.reportingCurrency)}</p>
       <p className="ux-helper">{data.purchase.date} · {data.purchase.source === 'simplefin' ? 'Synced purchase' : 'Manual purchase'}{data.purchase.split ? ` · Original ${purchaseMoney(data.purchase.originalAmount, data.purchase.reportingCurrency)}` : ''}</p>
       <div className="ux-section-line"><h3>Categories</h3><button type="button" className="ux-text-button" onClick={() => setMode('tags')}>Edit tags</button></div>

@@ -6,6 +6,8 @@ import { api } from '../util/api';
 import SplitPurchaseFields from '../components/SplitPurchaseFields';
 import { displayCategoryForExpense, selectCategoryExpenses } from '../util/categoryBrowserSelection';
 import { Download, Search, SlidersHorizontal } from 'lucide-react';
+import { PDF_EXPORT_ENABLED } from '../util/appFeatures';
+import VendorIcon from '../components/VendorIcon';
 import PurchaseRow from '../components/PurchaseRow';
 import Sheet from '../components/Sheet';
 import { usePurchaseNavigation } from '../util/purchaseNavigation';
@@ -332,6 +334,7 @@ export default function CategoryBrowserPage() {
     }, [expenses, splitPeople]);
 
     const downloadCategoryReport = async () => {
+        if (!PDF_EXPORT_ENABLED) return;
         if (!expenses.length || generatingReport) return;
         setGeneratingReport(true);
         setActionError('');
@@ -708,10 +711,10 @@ export default function CategoryBrowserPage() {
                             <div className="category-browser-total">
                                 Total: {money(totalAmount)}
                             </div>
-                            <button type="button" className="category-report-download" disabled={loading || !expenses.length || generatingReport} onClick={downloadCategoryReport}>
+                            {PDF_EXPORT_ENABLED && <button type="button" className="category-report-download" disabled={loading || !expenses.length || generatingReport} onClick={downloadCategoryReport}>
                                 <Download size={15} aria-hidden="true" />
                                 {generatingReport ? 'Creating PDF…' : 'Download report'}
-                            </button>
+                            </button>}
                         </div>
                     </div>
                     {actionError && <p className="category-rule-error" role="alert">{actionError}</p>}
@@ -794,7 +797,7 @@ export default function CategoryBrowserPage() {
                                                 </td>
                                                 <td data-label="Description">
                                                     <div className="category-purchase-name">
-                                                        <button type="button" className="ux-table-purchase" onClick={() => openPurchase(expense.id)}>{expense.icon?.url ? <img className="ux-vendor-icon" src={expense.icon.url} alt="" /> : <span className="ux-vendor-icon ux-vendor-fallback">{expense.description.slice(0,1)}</span>}<span>{expense.description}</span></button>
+                                                        <button type="button" className="ux-table-purchase" onClick={() => openPurchase(expense.id)}>{expense.icon?.url ? <VendorIcon className="ux-vendor-icon" src={expense.icon.url} alt="" /> : <span className="ux-vendor-icon ux-vendor-fallback">{expense.description.slice(0,1)}</span>}<span>{expense.description}</span></button>
                                                         <button type="button" className="category-purchase-remove" disabled={removingExpenseId === expense.id} onClick={() => removeDisplayedCategory(expense)} aria-label={`Remove ${expense.displayCategory} from ${expense.description}`} title={`Remove ${expense.displayCategory} from this purchase`}>
                                                             {removingExpenseId === expense.id ? '…' : '×'}
                                                         </button>

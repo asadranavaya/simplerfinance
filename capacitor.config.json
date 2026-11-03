@@ -1,0 +1,13 @@
+{
+  "appId": "com.simplerfinance.app",
+  "appName": "SimplerFinance",
+  "webDir": "dist-app",
+  "ios": {
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false },
+    "CapacitorCookies": { "enabled": false }
+  }
+}

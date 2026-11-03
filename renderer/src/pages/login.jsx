@@ -47,6 +47,8 @@ export default function LoginPage() {
         setError(err.message); // "Too many failed attempts. Try again in X minutes."
       } else if (attemptsRemaining !== null && attemptsRemaining !== undefined && attemptsRemaining <= 3) {
         setError(`Invalid email or password — ${attemptsRemaining} attempt${attemptsRemaining === 1 ? '' : 's'} remaining before your account is temporarily blocked.`);
+      } else if (!err.status) {
+        setError(err.message || 'Unable to connect. Check your internet connection and try again.');
       } else {
         setError('Invalid email or password');
       }

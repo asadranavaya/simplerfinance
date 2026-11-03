@@ -4,6 +4,7 @@ renderer/node_modules/
 
 # Build outputs
 dist/
+dist-app/
 renderer/dist/
 build/
 
@@ -67,6 +68,15 @@ jspm_packages/
 
 # macOS
 .DS_Store
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/Pods/
+ios/App/build/
+ios/**/xcuserdata/
+*.xcarchive/
+*.ipa
+*.p12
+*.mobileprovision
 
 # Windows
 Thumbs.db

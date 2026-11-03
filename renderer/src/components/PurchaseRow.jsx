@@ -4,6 +4,7 @@ import { Bell, MoreHorizontal, StickyNote } from 'lucide-react';
 
 import { purchaseMoney } from '../util/formatting';
 import { useMediaQuery } from '../util/useMediaQuery';
+import VendorIcon from './VendorIcon';
 
 export default function PurchaseRow({ expense, onOpen, onTags, actions = [], error }) {
   const [menu, setMenu] = useState(false);
@@ -40,7 +41,7 @@ export default function PurchaseRow({ expense, onOpen, onTags, actions = [], err
   const date = expense.transactionTime || expense.date;
   return <article className="ux-purchase-row" ref={container}>
     <button type="button" className="ux-purchase-open" onClick={onOpen} aria-label={`View purchase details for ${expense.description}`}>
-      {expense.icon?.url ? <img className="ux-vendor-icon" src={expense.icon.url} alt="" loading="lazy" /> : <span className="ux-vendor-icon ux-vendor-fallback" aria-hidden="true">{(expense.description || '?').slice(0, 1).toUpperCase()}</span>}
+      {expense.icon?.url ? <VendorIcon className="ux-vendor-icon" src={expense.icon.url} alt="" loading="lazy" /> : <span className="ux-vendor-icon ux-vendor-fallback" aria-hidden="true">{(expense.description || '?').slice(0, 1).toUpperCase()}</span>}
       <span className="ux-purchase-copy"><strong>{expense.description}</strong><span className="ux-purchase-meta">
         {date && <time dateTime={date}>{new Date(date.length === 10 ? `${date}T12:00:00` : date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</time>}
         {expense.pending && <span className="ux-status warning">Pending</span>}

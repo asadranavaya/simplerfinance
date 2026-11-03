@@ -156,6 +156,8 @@ The checked-in `library/` catalog is different from runtime uploads: it contains
 
 ## Common commands
 
+The iPhone app shares this repository. See [iPhone app development](docs/IPHONE_APP.md) for Linux previews, the separate app build, and macOS simulator builds.
+
 ```bash
 npm run dev                 # API and Vite development servers
 npm run setup               # guided installation, secrets, and account provisioning

@@ -20,6 +20,8 @@ const { protectExpenseRecord, revealExpenseRecord, protectFinancialAccountData }
 const { encryptAccessUrl } = require('../server/lib/simplefinCrypto');
 const { createNotification } = require('../server/lib/notifications');
 const { JWT_SECRET } = require('../server/middleware/auth');
+const appBuild = process.env.UX_APP_BUILD === '1';
+const frontend = path.resolve(__dirname, appBuild ? '../dist-app' : '../dist');
 
 const now = new Date();
 const stamp = now.toISOString();
@@ -53,8 +55,8 @@ db.insert(schema.financialAccountLinks).values({ id: 'ux-link', userId: accountI
 const dueAt = new Date(Date.now() + 3 * 86400000).toISOString();
 sqlite.prepare('INSERT INTO purchase_reminders(expense_id,account_id,due_at) VALUES(?,?,?)').run('ux-expense-0-0', accountId, dueAt);
 createNotification(accountId, { title: 'Purchase reminder', message: 'Check this purchase.', metadata: { expenseId: 'ux-expense-0-0', purchaseDescription: fixtures[0][0] } });
-app.use(express.static(path.resolve(__dirname, '../dist')));
-app.get('/{*path}', (_, res) => res.sendFile(path.resolve(__dirname, '../dist/index.html')));
+app.use(express.static(frontend));
+app.get('/{*path}', (_, res) => res.sendFile(path.join(frontend, 'index.html')));
 
 async function run() {
   const server = app.listen(0, '127.0.0.1');
@@ -91,6 +93,14 @@ async function run() {
           assert.ok(await page.locator('.ux-purchase-row img.ux-vendor-icon').count() > 0, 'Vendor icons must be retained');
           if ([390, 1440].includes(width)) await page.screenshot({ path: path.join(output, `spending-summary-${width}.png`), animations: 'disabled' });
           assert.equal(await page.getByText('Refunds reduce the total.', { exact: false }).count(), 0);
+          assert.equal(await page.getByRole('button', { name: /^Import$/ }).count(), appBuild ? 0 : 1, 'File import is available only in the website build');
+          assert.equal(await page.locator('input[type="file"]').count(), 0);
+          if (!appBuild && width === 390) {
+            await page.getByRole('button', { name: /^Import$/ }).click();
+            await page.getByRole('heading', { name: 'Import Expense', exact: true }).waitFor();
+            assert.ok(await page.locator('.modal-overlay input[type="file"]').count() > 0, 'Website import tools still load on demand');
+            await page.locator('.modal-overlay .btn-close').click();
+          }
           if (width > 768) {
             assert.equal(await page.locator('.ux-purchase-row').first().locator('.ux-expanded-tags .ux-chip').count(), 3, 'Desktop expands every purchase category');
             assert.equal(await page.locator('.ux-purchase-row').first().locator('button.ux-tag-summary').count(), 0, 'Desktop category labels are display-only');
@@ -101,6 +111,7 @@ async function run() {
           await page.locator('.ux-purchase-row').last().evaluate(el => scrollTo({ top: el.getBoundingClientRect().top + scrollY - 130, behavior: 'instant' }));
           await page.locator('.ux-row-menu-trigger').last().click();
           await page.locator('.ux-purchase-menu').waitFor();
+          assert.equal(await page.locator('.ux-purchase-menu').getByRole('button', { name: 'Suggest vendor icon' }).count(), appBuild ? 0 : 1);
           assert.ok(await page.locator('.ux-purchase-menu').evaluate(el => {
             const rect = el.getBoundingClientRect();
             return el.parentElement === document.body && el.contains(document.elementFromPoint(rect.left + 20, rect.bottom - 20));
@@ -177,6 +188,7 @@ async function run() {
     await inputs.nth(0).fill(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
     await inputs.nth(1).fill(stamp.slice(0, 10));
     await page.getByRole('button', { name: 'Show results', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Download report', exact: true }).count(), appBuild ? 0 : 1, 'PDF export is available only in the website build');
     await page.waitForTimeout(150);
     assert.equal(await page.locator('.ux-explorer-mobile-list .ux-purchase-row').count(), 2, 'Overlapping Food/Drinks purchases must appear once');
     await page.screenshot({ path: path.join(output, 'explorer-390.png') });

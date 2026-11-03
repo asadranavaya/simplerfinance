@@ -46,6 +46,9 @@ jobs:
       - name: Check responsive layouts and purchase workflows
         run: node --require ./test/setup.js test/customerUx.browser.cjs
 
+      - name: Check app feature boundaries and purchase workflows
+        run: npm run test:app
+
       - name: Audit production dependencies
         run: |
           npm audit --omit=dev

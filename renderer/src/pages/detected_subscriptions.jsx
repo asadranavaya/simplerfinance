@@ -4,6 +4,7 @@ import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
 import { useSearchParams } from 'react-router-dom';
 import { usePurchaseNavigation } from '../util/purchaseNavigation';
+import VendorIcon from '../components/VendorIcon';
 import { useUpcomingEvents } from '../util/useUpcomingEvents';
 import { nextEstimatedPayment, projectedDateForMonth, utcDate } from '../util/subscriptionCalendar';
 
@@ -202,7 +203,7 @@ export default function DetectedSubscriptionsPage() {
                       const linkedNames = new Set((subscription.linkedSubscriptions || []).map(item => item.description));
                       const automaticVariants = (subscription.variants || []).filter(value => value !== subscription.description && !linkedNames.has(value));
                       return <tr key={subscription.id} className={subscription.isActive ? '' : 'inactive'}>
-                        <td className="subscription-name">{subscription.icon?.url && <img className="ux-vendor-icon" src={subscription.icon.url} alt="" />}{subscription.description}{automaticVariants.length > 0 && <div className="subscription-variants">Also appears as: {automaticVariants.join(', ')}</div>}{subscription.linkedSubscriptions?.length > 0 && <div className="subscription-linked-variants"><span>Also appears as:</span>{subscription.linkedSubscriptions.map(item => <span className="subscription-linked-chip" key={item.id}>{item.description}<button type="button" title={`Unlink ${item.description}`} aria-label={`Unlink ${item.description}`} onClick={() => unlinkSubscription(item.id)}><X size={11}/></button></span>)}</div>}<div className="subscription-frequency">{subscription.occurrences} payments • {subscription.consecutiveMonths} consecutive months</div></td>
+                        <td className="subscription-name">{subscription.icon?.url && <VendorIcon className="ux-vendor-icon" src={subscription.icon.url} alt="" />}{subscription.description}{automaticVariants.length > 0 && <div className="subscription-variants">Also appears as: {automaticVariants.join(', ')}</div>}{subscription.linkedSubscriptions?.length > 0 && <div className="subscription-linked-variants"><span>Also appears as:</span>{subscription.linkedSubscriptions.map(item => <span className="subscription-linked-chip" key={item.id}>{item.description}<button type="button" title={`Unlink ${item.description}`} aria-label={`Unlink ${item.description}`} onClick={() => unlinkSubscription(item.id)}><X size={11}/></button></span>)}</div>}<div className="subscription-frequency">{subscription.occurrences} payments • {subscription.consecutiveMonths} consecutive months</div></td>
                         <td className="numeric strong">{money(subscription.averageAmount)}</td>
                         <td>{displayDate(nextPayment)}</td>
                         <td className="numeric strong">{money(subscription.totalPaid)}</td>
@@ -242,7 +243,7 @@ export default function DetectedSubscriptionsPage() {
 return <button type="button" key={dayKey} className={`subscription-calendar-day${outside ? ' outside' : ''}${dayKey === todayKey ? ' today' : ''}${selectedDay === dayKey ? ' selected' : ''}${(dayEvents.length || dayReminders.length) ? ' has-events' : ''}`} onClick={() => setSelectedDay(dayKey)}>
                       <span>{day.getUTCDate()}</span>
                       {dayReminders.length > 0 && <span className="purchase-calendar-reminder" title={dayReminders.map(event => `${event.description} · ${new Date(event.dueAt).toLocaleTimeString()}`).join('\n')} aria-label={`${dayReminders.length} purchase reminder${dayReminders.length === 1 ? '' : 's'}`}><Bell size={16} />{dayReminders.length > 1 && <small>{dayReminders.length}</small>}</span>}
-                      <div className="subscription-calendar-icon-stack" aria-label={dayEvents.map(event => event.description).join(', ')}>{dayEvents.slice(0, 4).map(event => <span key={event.id} title={`${event.description} · ${money(event.averageAmount)}`}>{event.icon ? <img src={event.icon.url} alt=""/> : <b>{event.description.slice(0,1).toUpperCase()}</b>}</span>)}{dayEvents.length > 4 && <small title={`${dayEvents.length - 4} additional payments`}>+{dayEvents.length - 4}</small>}</div>
+                      <div className="subscription-calendar-icon-stack" aria-label={dayEvents.map(event => event.description).join(', ')}>{dayEvents.slice(0, 4).map(event => <span key={event.id} title={`${event.description} · ${money(event.averageAmount)}`}>{event.icon ? <VendorIcon src={event.icon.url} alt=""/> : <b>{event.description.slice(0,1).toUpperCase()}</b>}</span>)}{dayEvents.length > 4 && <small title={`${dayEvents.length - 4} additional payments`}>+{dayEvents.length - 4}</small>}</div>
                     </button>;
                   })}
                 </div>

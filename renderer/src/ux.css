@@ -10,6 +10,8 @@
 }
 html[data-theme-mode="dark"] { --ux-page: #171d2c; color-scheme: dark; }
 html[data-theme-mode="light"] { color-scheme: light; }
+html[data-app-build="true"] .ux-app-header { height: calc(62px + env(safe-area-inset-top)); padding-top: calc(8px + env(safe-area-inset-top)); }
+.app-connectivity-notice { padding: 10px 16px; background: var(--ux-tint); color: var(--ux-ink); font-size: 13px; text-align: center; }
 body:has(.app-shell) { padding: 0; background: var(--ux-page); }
 #root:has(.app-shell) { padding: 0 !important; margin: 0; max-width: none !important; }
 .app-shell { min-height: 100dvh; color: var(--ux-ink); font-size: 14px; }
@@ -141,7 +143,7 @@ input.ux-switch { width: 36px; height: 22px; accent-color: var(--ux-accent); }
 .app-shell .monthly-spending-page .monthly-account-card .expandable-content { padding: 0 16px 6px; border-top: 1px solid var(--ux-line); }
 .app-shell .monthly-spending-page .expenses-heading { display: none; }
 .app-shell .monthly-spending-page .monthly-month-navigation .section-title { font-size: 18px; }
-.app-shell .monthly-spending-page .monthly-header-actions button:first-child { background: var(--ux-paper); color: var(--ux-accent); border: 1px solid var(--ux-line); box-shadow: none; }
+.app-shell .monthly-spending-page .monthly-header-actions button:has(.import-button-copy) { background: var(--ux-paper); color: var(--ux-accent); border: 1px solid var(--ux-line); box-shadow: none; }
 .app-shell .breadcrumb { font-size: 12px; margin: 4px 0 20px; }
 .ux-overview-metrics { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
 .ux-net-worth-hero { background: linear-gradient(115deg, var(--ux-paper), var(--ux-tint)); }

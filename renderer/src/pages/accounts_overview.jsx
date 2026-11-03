@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useId } from 'react';
 import { ChevronRight, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Sheet from '../components/Sheet';
+import VendorIcon from '../components/VendorIcon';
 import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
 
@@ -176,7 +177,7 @@ export default function AccountOverview() {
     : formatAccountMoney(item.balance, item.simplefin?.currency || netWorth?.reportingCurrency || 'USD');
   const renderGroup = (title, type, items) => <section className="full-width-card ux-account-group"><div className="section-header"><h2 className="section-title">{title}</h2><button type="button" className="ux-secondary" onClick={() => handleAddAccount(type === 'credit_card' ? 'credit' : type)}>+ Add account</button></div>
     {items.map(item => <button type="button" className="ux-account-open" key={item.id} onClick={() => openNetWorthPreference(type, item)}>
-      {item.icon?.url ? <img className="ux-vendor-icon" src={item.icon.url} alt="" /> : <span className="ux-vendor-icon ux-vendor-fallback">{(item.institution || item.bankName || item.brokerName || item.name || '?').slice(0, 1)}</span>}
+      {item.icon?.url ? <VendorIcon className="ux-vendor-icon" src={item.icon.url} alt="" /> : <span className="ux-vendor-icon ux-vendor-fallback">{(item.institution || item.bankName || item.brokerName || item.name || '?').slice(0, 1)}</span>}
       <span className="ux-account-copy"><strong>{item.nickname || item.bankName || item.brokerName || item.name}</strong><small>{item.institution || item.simplefin?.institutionName || (item.simplefin?.connected ? 'Synchronized account' : 'Manual account')}</small><ConnectionBadge simplefin={item.simplefin} /></span>
       <span className="ux-account-balance"><strong>{accountBalance(type, item)}</strong><small>{item.simplefin?.connected ? 'Provider balance' : type === 'credit_card' ? 'This month' : 'Balance'}</small></span><ChevronRight size={17} />
     </button>)}

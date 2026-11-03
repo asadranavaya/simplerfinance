@@ -11,6 +11,9 @@ import ServerErrorBanner from './components/ServerErrorBanner';
 import MobileNavigation from './components/MobileNavigation';
 import PurchaseDetails from './components/PurchaseDetails';
 import { NotificationProvider } from './util/NotificationContext';
+import { IS_APP_BUILD } from './util/appFeatures';
+import AppLifecycle from './components/AppLifecycle';
+import AppAdminNotice from './pages/app_admin_notice';
 
 import './App.css';
 import './ux.css';
@@ -25,7 +28,7 @@ const MorePage = lazy(() => import('./pages/more'));
 const ActivityPage = lazy(() => import('./pages/activity'));
 const CategoryBrowserPage = lazy(() => import('./pages/category_browser'));
 const DetectedSubscriptionsPage = lazy(() => import('./pages/detected_subscriptions'));
-const AdminDashboard = lazy(() => import('./pages/admin_dashboard'));
+const AdminDashboard = IS_APP_BUILD ? AppAdminNotice : lazy(() => import('./pages/admin_dashboard'));
 
 const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
 const STALE_PAGE_DATA_MS = 5 * 60 * 1000;
@@ -96,6 +99,7 @@ function AppRoutes() {
   return (
     <div className={`page-grid app-shell${user ? ' signed-in' : ''}${user?.role === 'admin' ? ' admin-shell' : ' customer-shell'}`}>
       <ServerErrorBanner />
+      {IS_APP_BUILD && <AppLifecycle />}
       {/* Hamburger button — mobile only */}
       {user?.role === 'admin' && isMobile && !sidebarOpen && (
         <button
