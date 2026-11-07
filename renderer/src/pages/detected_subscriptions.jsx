@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Bell, CalendarDays, ChevronLeft, ChevronRight, Link2, X } from 'lucide-react';
 import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
+import { useSearchParams } from 'react-router-dom';
+import { usePurchaseNavigation } from '../util/purchaseNavigation';
 import { useUpcomingEvents } from '../util/useUpcomingEvents';
 import { nextEstimatedPayment, projectedDateForMonth, utcDate } from '../util/subscriptionCalendar';
 
@@ -27,7 +29,11 @@ export default function DetectedSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastDetection, setLastDetection] = useState(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [viewParams, setViewParams] = useSearchParams();
+  const calendarOpen = viewParams.get('view') !== 'list';
+  const setCalendarOpen = open => setViewParams(current => { const next = new URLSearchParams(current); next.set('view', open ? 'calendar' : 'list'); return next; });
+  const openPurchase = usePurchaseNavigation();
+  const [error, setError] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(() => utcDate(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
   const [selectedDay, setSelectedDay] = useState(null);
   const [linkTarget, setLinkTarget] = useState(null);
@@ -43,11 +49,11 @@ export default function DetectedSubscriptionsPage() {
 
   const loadSubscriptions = async () => {
     if (!account?.id) return;
-    setLoading(true);
+    setLoading(true); setError('');
     try {
       setSubscriptions(await api.getDetectedSubscriptions());
     } catch (error) {
-      console.error('Error loading subscriptions:', error);
+      setError(error.message || 'Unable to load subscriptions.');
     } finally {
       setLoading(false);
     }
@@ -60,7 +66,7 @@ export default function DetectedSubscriptionsPage() {
       setSubscriptions(await api.detectSubscriptions());
       setLastDetection(new Date());
     } catch (error) {
-      console.error('Error detecting subscriptions:', error);
+      setError(error.message || 'Unable to detect subscriptions.');
     } finally {
       setLoading(false);
     }
@@ -70,7 +76,7 @@ export default function DetectedSubscriptionsPage() {
     try {
       if (await api.removeSubscription(account.id, subscriptionId)) await loadSubscriptions();
     } catch (error) {
-      console.error('Error removing subscription:', error);
+      setError(error.message || 'Unable to remove this subscription.');
     }
   };
 
@@ -131,6 +137,11 @@ export default function DetectedSubscriptionsPage() {
   const selectedEvents = selectedDay
     ? monthEvents.filter(event => event.projected.toISOString().slice(0, 10) === selectedDay)
     : [];
+  const agendaItems = [
+    ...upcomingEvents.events.filter(event => !selectedDay || reminderDateKey(event.dueAt) === selectedDay).map(event => ({ ...event, kind: 'reminder', agendaId: `reminder-${event.expenseId}`, scheduledDate: new Date(event.dueAt) })),
+    ...(selectedDay ? selectedEvents : upcoming).map(item => ({ ...item, kind: 'subscription', agendaId: item.id, scheduledDate: item.projected || item.nextPayment })),
+  ].sort((a, b) => a.scheduledDate - b.scheduledDate);
+  const visibleAgenda = selectedDay ? agendaItems : agendaItems.slice(0, 6);
   const currentMonthKey = `${calendarMonth.getUTCFullYear()}-${calendarMonth.getUTCMonth()}`;
   const todayKey = new Date().toISOString().slice(0, 10);
 
@@ -145,6 +156,10 @@ export default function DetectedSubscriptionsPage() {
 
   return (
     <div className="page-container subscriptions-page">
+      <header className="ux-subscriptions-heading"><div><h1 className="page-title">Subscriptions</h1><p className="ux-page-description">Estimated payments and purchase reminders.</p></div><button type="button" className="ux-secondary" disabled={loading} onClick={runDetection}>{loading ? 'Detecting…' : 'Detect recurring'}</button></header>
+      {error && <p className="ux-error" role="alert">{error}</p>}
+      <section className="ux-card ux-subscription-totals"><div><span className="ux-eyebrow">Monthly recurring</span><strong>{money(monthlyTotal)}</strong><small>{activeSubscriptions.length} active subscriptions</small></div><div><span className="ux-eyebrow">Next estimated payment</span><strong>{upcoming[0] ? money(upcoming[0].averageAmount) : '—'}</strong><small>{upcoming[0] ? `${upcoming[0].description} · ${displayDate(upcoming[0].nextPayment)}` : 'No estimates yet'}</small></div></section>
+      <div className="ux-tabs"><button type="button" aria-pressed={calendarOpen} onClick={() => setCalendarOpen(true)}>Upcoming</button><button type="button" aria-pressed={!calendarOpen} onClick={() => setCalendarOpen(false)}>All subscriptions</button></div>
       <section className={`subscriptions-workspace${calendarOpen ? ' showing-calendar' : ''}`}>
         <div className="subscriptions-workspace-slider">
           <div className="subscriptions-overview-panel">
@@ -187,7 +202,7 @@ export default function DetectedSubscriptionsPage() {
                       const linkedNames = new Set((subscription.linkedSubscriptions || []).map(item => item.description));
                       const automaticVariants = (subscription.variants || []).filter(value => value !== subscription.description && !linkedNames.has(value));
                       return <tr key={subscription.id} className={subscription.isActive ? '' : 'inactive'}>
-                        <td className="subscription-name">{subscription.description}{automaticVariants.length > 0 && <div className="subscription-variants">Also appears as: {automaticVariants.join(', ')}</div>}{subscription.linkedSubscriptions?.length > 0 && <div className="subscription-linked-variants"><span>Also appears as:</span>{subscription.linkedSubscriptions.map(item => <span className="subscription-linked-chip" key={item.id}>{item.description}<button type="button" title={`Unlink ${item.description}`} aria-label={`Unlink ${item.description}`} onClick={() => unlinkSubscription(item.id)}><X size={11}/></button></span>)}</div>}<div className="subscription-frequency">{subscription.occurrences} payments • {subscription.consecutiveMonths} consecutive months</div></td>
+                        <td className="subscription-name">{subscription.icon?.url && <img className="ux-vendor-icon" src={subscription.icon.url} alt="" />}{subscription.description}{automaticVariants.length > 0 && <div className="subscription-variants">Also appears as: {automaticVariants.join(', ')}</div>}{subscription.linkedSubscriptions?.length > 0 && <div className="subscription-linked-variants"><span>Also appears as:</span>{subscription.linkedSubscriptions.map(item => <span className="subscription-linked-chip" key={item.id}>{item.description}<button type="button" title={`Unlink ${item.description}`} aria-label={`Unlink ${item.description}`} onClick={() => unlinkSubscription(item.id)}><X size={11}/></button></span>)}</div>}<div className="subscription-frequency">{subscription.occurrences} payments • {subscription.consecutiveMonths} consecutive months</div></td>
                         <td className="numeric strong">{money(subscription.averageAmount)}</td>
                         <td>{displayDate(nextPayment)}</td>
                         <td className="numeric strong">{money(subscription.totalPaid)}</td>
@@ -201,7 +216,7 @@ export default function DetectedSubscriptionsPage() {
               )}
             </div>
 
-            <div className="content-card subscription-detection-card"><h3>How Detection Works</h3><ul className="detection-info-list"><li>Analyzes your expenses to find recurring patterns</li><li>Identifies expenses that appear in 3+ consecutive months with amounts staying within $3 month to month</li><li>Groups similar descriptions and estimates the next payment from the last observed payment day</li><li><strong>Link duplicates:</strong> Choose the subscription to keep, then link another detected entry into it</li><li>Marks subscriptions as cancelled if no payment appears for two months</li><li><strong>Remove false positives:</strong> Remove an item to exclude it from future detection</li></ul></div>
+            <details className="ux-advanced subscription-detection-card"><summary>How detection works</summary><ul className="detection-info-list"><li>Analyzes your expenses to find recurring patterns</li><li>Identifies expenses that appear in 3+ consecutive months with amounts staying within $3 month to month</li><li>Groups similar descriptions and estimates the next payment from the last observed payment day</li><li><strong>Link duplicates:</strong> Choose the subscription to keep, then link another detected entry into it</li><li>Marks subscriptions as cancelled if no payment appears for two months</li><li><strong>Remove false positives:</strong> Remove an item to exclude it from future detection</li></ul></details>
           </div>
 
           <div className="subscriptions-calendar-panel" aria-hidden={!calendarOpen}>
@@ -234,15 +249,14 @@ return <button type="button" key={dayKey} className={`subscription-calendar-day$
               </section>
 
               <aside className="content-card subscription-calendar-agenda">
-                <div className="subscription-agenda-heading"><small>{selectedDay ? displayDate(`${selectedDay}T00:00:00Z`) : 'Next estimated payments'}</small><strong>{selectedDay ? money(selectedEvents.reduce((sum, item) => sum + item.averageAmount, 0)) : money(upcoming.slice(0, 5).reduce((sum, item) => sum + item.averageAmount, 0))}</strong></div>
+                <div className="subscription-agenda-heading"><small>{selectedDay ? displayDate(`${selectedDay}T00:00:00Z`) : 'Upcoming events'}</small><strong>{selectedDay ? money(selectedEvents.reduce((sum, item) => sum + item.averageAmount, 0)) : money(upcoming.slice(0, 5).reduce((sum, item) => sum + item.averageAmount, 0))}</strong></div>
                 <div className="subscription-agenda-list">
                   {upcomingEvents.error && <p role="alert">{upcomingEvents.error}</p>}
-                  {upcomingEvents.events.filter(event => !selectedDay || reminderDateKey(event.dueAt) === selectedDay).slice(0, selectedDay ? undefined : 5).map(event => <article key={`reminder-${event.expenseId}`}><span className="subscription-agenda-date"><Bell size={18} /></span><div><strong>{event.description}</strong><small>Purchase reminder · {new Date(event.dueAt).toLocaleString()}</small></div></article>)}
-                  {(selectedDay ? selectedEvents : upcoming.slice(0, 5)).map(item => {
-                    const paymentDate = item.projected || item.nextPayment;
-                    return <article key={item.id}><span className="subscription-agenda-date"><b>{paymentDate.getUTCDate()}</b><small>{paymentDate.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</small></span><div><strong>{item.description}</strong><small>Estimated monthly payment</small></div><b>{money(item.averageAmount)}</b></article>;
-                  })}
-                  {!(selectedDay ? selectedEvents : upcoming).length && <div className="subscription-agenda-empty"><CalendarDays size={24} /><strong>No estimated payments</strong><span>{selectedDay ? 'Select another date to view its schedule.' : 'Run subscription detection to create a schedule.'}</span></div>}
+                  {visibleAgenda.map(item => <article key={item.agendaId}>
+                    <span className="subscription-agenda-date">{item.kind === 'reminder' ? <Bell size={18} /> : <><b>{item.scheduledDate.getUTCDate()}</b><small>{item.scheduledDate.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' })}</small></>}</span>
+                    {item.kind === 'reminder' ? <button type="button" className="ux-agenda-purchase" onClick={() => openPurchase(item.expenseId)}><strong>{item.description}</strong><small>Purchase reminder · {item.scheduledDate.toLocaleString()}</small>{item.notes && <small>{item.notes}</small>}</button> : <><div><strong>{item.description}</strong><small>Estimated monthly payment</small></div><b>{money(item.averageAmount)}</b></>}
+                  </article>)}
+                  {!visibleAgenda.length && <div className="subscription-agenda-empty"><CalendarDays size={24} /><strong>No upcoming events</strong><span>{selectedDay ? 'Select another date.' : 'Set a purchase reminder or run subscription detection.'}</span></div>}
                 </div>
                 <p className="subscription-calendar-disclaimer">Estimated dates may differ from the merchant’s actual billing date. They do not initiate or authorize payments.</p>
               </aside>

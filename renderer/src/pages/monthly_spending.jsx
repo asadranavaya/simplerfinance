@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import PurchaseRow from '../components/PurchaseRow';
+import SpendingPie from '../components/SpendingPie';
+import { usePurchaseNavigation } from '../util/purchaseNavigation';
 import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
 
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { externalCategoryTooltip, ExternalTooltipCleanupPlugin } from '../util/externalChartTooltip';
-import { Doughnut } from 'react-chartjs-2';
-import { Bell, ChevronLeft, ChevronRight, StickyNote, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Upload } from "lucide-react";
 import ImportModal from '../util/ImportCsv';
 import SplitPurchaseFields from '../components/SplitPurchaseFields';
 
-ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels, ExternalTooltipCleanupPlugin);
+ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
 const FIRST_SPENDING_YEAR = 2020;
 const LAST_SPENDING_YEAR = 2099;
@@ -20,6 +21,11 @@ const LAST_SPENDING_YEAR = 2099;
 export default function MonthlySpendingPage() {
   const { account } = useAccount();
   const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const openPurchase = usePurchaseNavigation();
+  const [query, setQuery] = useState('');
+  const [financialProfile, setFinancialProfile] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [currentView, setCurrentView] = useState('years');
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -35,9 +41,6 @@ export default function MonthlySpendingPage() {
   const [modalForm, setModalForm] = useState({ cardId: '', description: '', amount: '', originalAmount: '', categories: [], updateId: '', source: '' });
   const [expenseFormError, setExpenseFormError] = useState('');
   const [savingExpense, setSavingExpense] = useState(false);
-  const [categoryDropdown, setCategoryDropdown] = useState({ expenseId: null, isOpen: false });
-  const [newCategoryInput, setNewCategoryInput] = useState('');
-  const [colorPicker, setColorPicker] = useState({ categoryName: null, isOpen: false, color: '#007bff' });
   const [rememberingExpenseId, setRememberingExpenseId] = useState(null);
   const [rememberedExpenseIds, setRememberedExpenseIds] = useState(new Set());
   const [categoryRuleError, setCategoryRuleError] = useState('');
@@ -52,29 +55,20 @@ export default function MonthlySpendingPage() {
   const [savingSplit, setSavingSplit] = useState(false);
   const [iconDraft, setIconDraft] = useState(null);
   const [iconSubmissionError, setIconSubmissionError] = useState('');
-  const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
-  const [betaFeatures, setBetaFeatures] = useState([]);
-  const [purchaseDiagnostics, setPurchaseDiagnostics] = useState(null);
-  const [purchaseNotesDraft, setPurchaseNotesDraft] = useState('');
-  const [savingPurchaseNotes, setSavingPurchaseNotes] = useState(false);
-  const [purchaseNotesError, setPurchaseNotesError] = useState('');
-  const [purchaseNotesSaved, setPurchaseNotesSaved] = useState(false);
-  const [reminderDraft, setReminderDraft] = useState('');
-  const [reminderError, setReminderError] = useState('');
-  const [savingReminder, setSavingReminder] = useState(false);
   const [changingPeriod, setChangingPeriod] = useState(false);
 
   useEffect(() => {
-    loadCreditCards();
-    loadCategories();
+    loadCreditCards().catch(error => setLoadError(error.message || 'Unable to load accounts.'));
+    loadCategories().catch(error => setLoadError(error.message || 'Unable to load categories.'));
     api.getSplitPeople().then(setSplitPeople).catch(() => {});
-    api.getBetaFeatures().then(result => setBetaFeatures(result.features || [])).catch(() => {});
 
     const today = new Date();
     const requestedMonthIndex = months.indexOf(location.state?.month);
+    const requestedDate = params.get('period');
+    const validPeriod = /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedDate || '') && Number(requestedDate.slice(0, 4)) >= FIRST_SPENDING_YEAR && Number(requestedDate.slice(0, 4)) <= LAST_SPENDING_YEAR;
     const hasRequestedPeriod = location.state?.year && requestedMonthIndex !== -1;
-    const year = hasRequestedPeriod ? Number(location.state.year) : today.getFullYear();
-    const monthIndex = hasRequestedPeriod ? requestedMonthIndex : today.getMonth();
+    const year = validPeriod ? Number(requestedDate.slice(0, 4)) : hasRequestedPeriod ? Number(location.state.year) : today.getFullYear();
+    const monthIndex = validPeriod ? Number(requestedDate.slice(5)) - 1 : hasRequestedPeriod ? requestedMonthIndex : today.getMonth();
 
     setSelectedYear(year);
     setSelectedMonth(monthIndex);
@@ -83,28 +77,6 @@ export default function MonthlySpendingPage() {
   // Initial route state is consumed once; subsequent navigation is handled by this page's controls.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const purchaseInspectorEnabled = betaFeatures.includes('purchase_data_inspector');
-  const showDiagnosticMetadata = purchaseDiagnostics?.data?.diagnosticsEnabled ?? purchaseInspectorEnabled;
-  const openPurchaseDiagnostics = async (expense) => {
-    setReminderDraft('');
-    setReminderError('');
-    setPurchaseNotesDraft(expense.notes || '');
-    setPurchaseNotesError('');
-    setPurchaseNotesSaved(false);
-    setPurchaseDiagnostics({ expense, loading: true, error: '', data: null });
-    try {
-      const data = await api.getExpenseDiagnostics(expense.id);
-      if (data.purchase?.reminder) {
-        const date = new Date(data.purchase.reminder.dueAt);
-        setReminderDraft(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-      }
-      setPurchaseNotesDraft(data.purchase?.notes || '');
-      setPurchaseDiagnostics({ expense, loading: false, error: '', data });
-    } catch (error) {
-      setPurchaseDiagnostics({ expense, loading: false, error: error.message, data: null });
-    }
-  };
 
   useLayoutEffect(() => {
     const expandedCardId = [...expandedCards][0] ?? null;
@@ -118,31 +90,12 @@ export default function MonthlySpendingPage() {
   }, [expandedCards]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (categoryDropdown.isOpen && !event.target.closest('.category-dropdown-container')) {
-        setCategoryDropdown({ expenseId: null, isOpen: false });
-        setNewCategoryInput('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [categoryDropdown.isOpen]);
-
-  useEffect(() => {
-    if (!openExpenseMenuId) return undefined;
-    const closeMenu = event => {
-      if (!event.target.closest('.expense-mobile-menu-wrap')) setOpenExpenseMenuId(null);
-    };
-    document.addEventListener('pointerdown', closeMenu);
-    return () => document.removeEventListener('pointerdown', closeMenu);
-  }, [openExpenseMenuId]);
-
-  useEffect(() => {
-    if (!categoryDropdown.isOpen) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previousOverflow; };
-  }, [categoryDropdown.isOpen]);
+    const refresh = () => { if (selectedYear && selectedMonth !== null) loadMonthlySpending(selectedYear, selectedMonth + 1); loadCategories().catch(error => setLoadError(error.message)); };
+    window.addEventListener('budget:purchases-updated', refresh);
+    return () => window.removeEventListener('budget:purchases-updated', refresh);
+  // Refresh the current period after a shared purchase sheet is saved.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear, selectedMonth]);
 
   const loadCreditCards = async () => {
     if (api && account?.id) {
@@ -152,6 +105,7 @@ export default function MonthlySpendingPage() {
         api.getFinancialProfile(),
       ]);
       setReportingCurrency(profile?.reportingCurrency || 'USD');
+      setFinancialProfile(profile);
       const linkedBanks = (banks || []).filter(bank => bank.simplefin?.connected).map(bank => ({
         ...bank,
         name: bank.bankName || bank.name || 'Bank account',
@@ -174,8 +128,8 @@ export default function MonthlySpendingPage() {
 
   const loadMonthlySpending = async (year, month) => {
     if (api && account?.id) {
-      const spending = await api.getMonthlySpending(account.id, year, month);
-      setMonthlySpending(spending);
+      try { const spending = await api.getMonthlySpending(account.id, year, month); setMonthlySpending(spending); setLoadError(''); }
+      catch (error) { setLoadError(error.message || 'Unable to load purchases.'); }
     }
   };
 
@@ -203,12 +157,6 @@ export default function MonthlySpendingPage() {
   const accountsWithTransactions = new Set(monthlySpending.filter(record => record.expenses?.length).map(record => String(record.cardId)));
   const visibleMonthlyAccounts = creditCards.filter(card => card.isActive !== false || accountsWithTransactions.has(String(card.id)));
 
-  const visibleCategories = categories.filter((category) => {
-    const name = typeof category === 'string' ? category : category.name;
-    return name.toLocaleLowerCase() !== 'uncategorized'
-      && name.toLocaleLowerCase().includes(newCategoryInput.trim().toLocaleLowerCase());
-  });
-
   const handleYearClick = (year) => {
     setSelectedYear(year);
     setCurrentView('months');
@@ -217,9 +165,8 @@ export default function MonthlySpendingPage() {
   const openSpendingPeriod = async (year, monthIndex) => {
     if (changingPeriod) return;
     setChangingPeriod(true);
+    const next = new URLSearchParams(params); next.set('period', `${year}-${String(monthIndex + 1).padStart(2, '0')}`); setParams(next, { replace: true });
     setExpandedCards(new Set());
-    setOpenExpenseMenuId(null);
-    setCategoryDropdown({ expenseId: null, isOpen: false });
     setSelectedYear(year);
     setSelectedMonth(monthIndex);
     setCurrentView('spending');
@@ -281,7 +228,6 @@ export default function MonthlySpendingPage() {
   };
 
   const toggleCardExpansion = (cardId) => {
-    setOpenExpenseMenuId(null);
     setExpandedCards(current => current.has(cardId) ? new Set() : new Set([cardId]));
   };
 
@@ -356,155 +302,10 @@ export default function MonthlySpendingPage() {
     setModalForm({ ...modalForm, categories: modalForm.categories.filter(cat => cat !== categoryToRemove) });
   };
 
-  const toggleCategoryDropdown = (expenseId) => {
-    setCategoryDropdown(prev => ({
-      expenseId: prev.expenseId === expenseId && prev.isOpen ? null : expenseId,
-      isOpen: prev.expenseId === expenseId ? !prev.isOpen : true
-    }));
-    setNewCategoryInput('');
-  };
-
-  const replaceMonthlyExpense = updated => {
-    if (!updated?.id) return;
-    setMonthlySpending(records => records.map(record => ({
-      ...record,
-      expenses: (record.expenses || []).map(expense => expense.id === updated.id ? { ...expense, ...updated } : expense),
-    })));
-  };
-
-  const savePurchaseNotes = async event => {
-    event.preventDefault();
-    if (!purchaseDiagnostics?.expense || savingPurchaseNotes) return;
-    setSavingPurchaseNotes(true);
-    setPurchaseNotesError('');
-    setPurchaseNotesSaved(false);
-    try {
-      const updated = await api.updateExpense(
-        account.id,
-        selectedYear,
-        selectedMonth + 1,
-        purchaseDiagnostics.expense.cardId,
-        purchaseDiagnostics.expense.id,
-        { notes: purchaseNotesDraft },
-      );
-      replaceMonthlyExpense(updated);
-      setPurchaseDiagnostics(current => current ? {
-        ...current,
-        expense: { ...current.expense, notes: updated.notes || '' },
-        data: current.data ? {
-          ...current.data,
-          purchase: { ...current.data.purchase, notes: updated.notes || '' },
-        } : current.data,
-      } : current);
-      setPurchaseNotesDraft(updated.notes || '');
-      setPurchaseNotesSaved(true);
-    } catch (error) {
-      setPurchaseNotesError(error.message || 'Unable to save these notes.');
-    } finally {
-      setSavingPurchaseNotes(false);
-    }
-  };
-
-  const savePurchaseReminder = async (remove = false) => {
-    if (!purchaseDiagnostics || savingReminder) return;
-    setSavingReminder(true);
-    setReminderError('');
-    try {
-      const date = new Date(reminderDraft);
-      if (!remove && (!reminderDraft || !Number.isFinite(date.getTime()))) throw new Error('Choose a reminder date and time.');
-      const { reminder } = await api.setPurchaseReminder(purchaseDiagnostics.expense.id, remove ? null : date.toISOString());
-      const updated = { ...purchaseDiagnostics.expense, reminder };
-      replaceMonthlyExpense(updated);
-      setPurchaseDiagnostics(current => current ? { ...current, expense: updated, data: { ...current.data, purchase: { ...current.data.purchase, reminder } } } : current);
-      if (remove) setReminderDraft('');
-    } catch (error) {
-      setReminderError(error.message || 'Unable to save this reminder.');
-    } finally { setSavingReminder(false); }
-  };
-
-  const addCategoryToExpense = async (expense, category) => {
-    if (!category || category.toLocaleLowerCase() === 'uncategorized' || expense.categories?.includes(category)) return;
-    // Add category as main expense on first entry if it doesnt already exist
-    const updatedCategories = [...(expense.categories || []).filter(item => item.toLocaleLowerCase() !== 'uncategorized'), category];
-    setCategoryDropdown({ expenseId: null, isOpen: false });
-    setNewCategoryInput('');
-    setExpenseActionError(null);
-    try {
-      const updated = !expense.mainCategory
-        ? await api.updateExpense(account.id, selectedYear, selectedMonth + 1, expense.cardId || categoryDropdown.cardId, expense.id, { categories: updatedCategories, mainCategory: category })
-        : await api.updateExpense(account.id, selectedYear, selectedMonth + 1, expense.cardId || categoryDropdown.cardId, expense.id, { categories: updatedCategories });
-      replaceMonthlyExpense(updated);
-    } catch (error) {
-      setExpenseActionError({ expenseId: expense.id, message: error.message || 'Unable to add this tag. Please try again.' });
-    }
-  };
-
-  const updateMainExpenseCategory = async (expense, mainCategory) => {
-    if (!mainCategory || mainCategory.toLocaleLowerCase() === 'uncategorized') return;
-    const categories = [mainCategory, ...(expense.categories || []).filter(category => category !== mainCategory && category.toLocaleLowerCase() !== 'uncategorized')];
-    setExpenseActionError(null);
-    try {
-      const updated = await api.updateExpense(account.id, selectedYear, selectedMonth + 1, expense.cardId || categoryDropdown.cardId, expense.id, { mainCategory, categories });
-      replaceMonthlyExpense(updated);
-    } catch (error) {
-      setExpenseActionError({ expenseId: expense.id, message: error.message || 'Unable to change the primary tag. Please try again.' });
-    }
-  };
-
-  const handleNewCategorySubmit = async (expense) => {
-    if (newCategoryInput.trim()) {
-      const newCategoryName = newCategoryInput.trim();
-      if (newCategoryName.toLocaleLowerCase() === 'uncategorized') return;
-      const categoryExists = categories.find(cat => (typeof cat === 'string' ? cat : cat.name).toLocaleLowerCase() === newCategoryName.toLocaleLowerCase());
-      if (!categoryExists) {
-        const updatedCategories = await api.addCategory(newCategoryName);
-        setCategories(updatedCategories);
-      }
-      const resolvedName = categoryExists ? (typeof categoryExists === 'string' ? categoryExists : categoryExists.name) : newCategoryName;
-      await addCategoryToExpense(expense, resolvedName);
-    }
-  };
-
-  const openColorPicker = (categoryName) => {
-    const category = categories.find(cat => (typeof cat === 'string' ? cat : cat.name) === categoryName);
-    const currentColor = typeof category === 'string' ? '#007bff' : category.color;
-    setCategoryDropdown({ expenseId: null, isOpen: false });
-    setColorPicker({ categoryName, isOpen: true, color: currentColor });
-  };
-
-  const updateCategoryColor = async () => {
-    if (colorPicker.categoryName) {
-      const updatedCategories = await api.updateCategory(colorPicker.categoryName, colorPicker.color);
-      setCategories(updatedCategories);
-      setColorPicker({ categoryName: null, isOpen: false, color: '#007bff' });
-    }
-  };
-
   const getCategoryColor = (categoryName) => {
     const category = categories.find(cat => (typeof cat === 'string' ? cat : cat.name) === categoryName);
     if (!category) return '#e9ecef';
     return typeof category === 'string' ? '#e9ecef' : category.color;
-  };
-
-  const removeCategoryFromExpense = async (expense, categoryToRemove) => {
-    setExpenseActionError(null);
-    try {
-      const updatedCategories = (expense.categories || []).filter(cat => cat !== categoryToRemove);
-      const mainCategory = expense.mainCategory === categoryToRemove
-        ? updatedCategories[0] || ''
-        : expense.mainCategory || updatedCategories[0] || '';
-      const updated = await api.updateExpense(
-        account.id,
-        selectedYear,
-        selectedMonth + 1,
-        expense.cardId || categoryDropdown.cardId,
-        expense.id,
-        { categories: updatedCategories, mainCategory },
-      );
-      replaceMonthlyExpense(updated);
-    } catch (error) {
-      setExpenseActionError({ expenseId: expense.id, message: error.message || 'Unable to remove this tag. Please try again.' });
-    }
   };
 
   const deleteExpense = async (expense, cardId) => {
@@ -667,70 +468,14 @@ export default function MonthlySpendingPage() {
   );
 
   const renderMonthlyCategorySummary = () => {
-    if (!monthlySpending.length) return null;
-
-    const categoryChartData = getCategoryChartData();
-    const categoryTotal = categoryChartData.datasets[0].data.reduce((sum, value) => sum + value, 0);
-
-    return (
-      <div className="category-full-row monthly-category-row">
-        <div className="donut-chart-container spending-category-card content-card">
-          <h2 className="card-title monthly-category-title">🏷️ Spending by Category</h2>
-
-          <div className="category-visual-layout">
-            <div className="category-donut-chart chart-container">
-              <Doughnut data={categoryChartData} options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '66%',
-                radius: '92%',
-                animation: { duration: 900, easing: 'easeOutQuart' },
-                elements: {
-                  arc: {
-                    borderWidth: 3,
-                    borderColor: 'transparent',
-                    borderRadius: 7,
-                    spacing: 2,
-                    hoverOffset: 8
-                  }
-                },
-                plugins: {
-                  legend: { display: false },
-                  datalabels: { display: false },
-                  tooltip: {
-                    enabled: false,
-                    external: externalCategoryTooltip,
-                  }
-                }
-              }} />
-              <div className="donut-center-text">
-                <div className="donut-center-label">Total</div>
-                <div className="donut-center-value">${categoryTotal.toLocaleString()}</div>
-              </div>
-            </div>
-
-            <div className="category-breakdown">
-              <div className="category-breakdown-heading">
-                <span>Category breakdown</span>
-                <small>{categoryChartData.labels.length} categories</small>
-              </div>
-              <div className="donut-pills-row">
-                {categoryChartData.labels.map((label, index) => {
-                  const value = categoryChartData.datasets[0].data[index] || 0;
-                  const color = categoryChartData.datasets[0].backgroundColor[index];
-                  return (
-                    <div className="category-breakdown-item" key={label}>
-                      <span className="category-breakdown-label"><i style={{ background: color }} />{label}</span>
-                      <strong>${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    const chart = getCategoryChartData();
+    const total = monthlySpending.reduce((sum, record) => sum + (record.expenses || []).reduce((value, expense) => value + expense.amount, 0), 0);
+    return <section className="ux-month-summary ux-card">
+      <div className="ux-month-metrics"><div className="ux-month-total"><span className="ux-eyebrow">Selected month</span><strong>{formatMoney(total)}</strong><small>{monthlySpending.reduce((sum, record) => sum + (record.expenses?.length || 0), 0)} purchases across your accounts</small></div>
+      <div className="ux-month-budget">{financialProfile?.monthlySpendLimit > 0 ? <><span className="ux-eyebrow">Budget remaining</span><strong>{formatMoney(financialProfile.monthlySpendLimit - total)}</strong><small>of {formatMoney(financialProfile.monthlySpendLimit)} monthly limit</small></> : <Link className="ux-text-button" to="/settings?panel=financial">Set a monthly budget</Link>}</div>
+      <Link className="ux-text-button" to={`/category-browser?range=custom&start=${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01&end=${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${new Date(selectedYear, selectedMonth + 1, 0).getDate()}&section=overview`}>Explore in Analytics</Link></div>
+      <SpendingPie labels={chart.labels} values={chart.datasets[0].data} colors={chart.datasets[0].backgroundColor} total={total} currency={reportingCurrency} title="Spending by category" />
+    </section>;
   };
 
   const renderSpendingView = () => (
@@ -740,7 +485,7 @@ export default function MonthlySpendingPage() {
           <button type="button" onClick={() => changeSelectedMonth(-1)} disabled={changingPeriod || (selectedYear === FIRST_SPENDING_YEAR && selectedMonth === 0)} aria-label="Show previous month">
             <ChevronLeft size={20} aria-hidden="true" />
           </button>
-          <h2 className="section-title">Monthly Spending - {months[selectedMonth]} {selectedYear}</h2>
+          <h2 className="section-title">{months[selectedMonth]} {selectedYear}</h2>
           <button type="button" onClick={() => changeSelectedMonth(1)} disabled={changingPeriod || (selectedYear === LAST_SPENDING_YEAR && selectedMonth === 11)} aria-label="Show next month">
             <ChevronRight size={20} aria-hidden="true" />
           </button>
@@ -766,13 +511,18 @@ export default function MonthlySpendingPage() {
         </div>
       </div>
 
+      {loadError && <p className="ux-error" role="alert">{loadError} <button type="button" className="ux-text-button" onClick={() => loadMonthlySpending(selectedYear, selectedMonth + 1)}>Try again</button></p>}
       {renderMonthlyCategorySummary()}
+      <label className="ux-search"><Search size={18} /><input aria-label="Search purchases" placeholder="Search merchant, note, tag, or amount" value={query} onChange={event => setQuery(event.target.value)} /></label>
+      {query.trim() && !monthlySpending.some(record => record.expenses?.some(expense => [expense.description, expense.notes, expense.amount, formatMoney(expense.amount), ...(expense.categories || [])].join(' ').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))) && <div className="ux-card ux-empty"><strong>No matching purchases</strong><p>Try another merchant, note, tag, or amount.</p><button type="button" className="ux-text-button" onClick={() => setQuery('')}>Clear search</button></div>}
 
       {visibleMonthlyAccounts.map(card => {
         const cardSpending = monthlySpending.find(s => s.cardId.toString() === card.id.toString());
-        const expenses = cardSpending?.expenses || [];
+        const allExpenses = cardSpending?.expenses || [];
+        const expenses = allExpenses.filter(expense => [expense.description, expense.notes, expense.amount, formatMoney(expense.amount), ...(expense.categories || [])].join(' ').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+        if (query.trim() && !expenses.length) return null;
         const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-        const isExpanded = expandedCards.has(card.id);
+        const isExpanded = Boolean(query.trim()) || expandedCards.has(card.id);
 
         return (
           <div key={card.id} ref={node => { if (node) monthlyCardRefs.current.set(card.id, node); else monthlyCardRefs.current.delete(card.id); }} className={`expandable-card monthly-account-card${isExpanded ? ' is-expanded' : ''}`}>
@@ -819,7 +569,7 @@ export default function MonthlySpendingPage() {
                 </div>
               </div>
               <div className="monthly-account-total">
-                <span>Monthly total</span>
+                <span>{query.trim() ? 'Matching purchases' : 'Monthly total'}</span>
                 <strong>{formatMoney(total)}</strong>
               </div>
               <button
@@ -839,206 +589,15 @@ export default function MonthlySpendingPage() {
                   <p className="text-black text-italic">No expenses added yet</p>
                 ) : (
                   expenses.map(expense => (
-                    <div
-                      key={expense.id}
-                      className="expense-item expense-inspectable"
-                      onClick={event => {
-                        if (event.target.closest('.expense-actions, .category-picker-overlay, .category-dropdown, button, input, select, a')) return;
-                        openPurchaseDiagnostics({ ...expense, cardId: card.id });
-                      }}
-                      onKeyDown={event => {
-                        if (event.target !== event.currentTarget || !['Enter', ' '].includes(event.key)) return;
-                        event.preventDefault();
-                        openPurchaseDiagnostics({ ...expense, cardId: card.id });
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`View purchase details for ${expense.description}`}
-                    >
-                      <div className="expense-primary-copy">
-<span className="expense-merchant-copy">{expense.icon ? <img className="entity-icon" src={expense.icon.url} alt="" /> : <button type="button" className="entity-icon-fallback" title="Suggest a company icon" onClick={() => { setIconSubmissionError(''); setIconDraft({ entityType:'merchant', displayName:expense.description, pattern:expense.providerDescription || expense.description, exampleText:expense.providerDescription || expense.description }); }}>{expense.description.slice(0,1).toUpperCase()}</button>}<span className="text-black">{expense.description}</span>{Boolean(expense.notes?.trim()) && <span className="expense-note-indicator" title="This purchase has notes" aria-label="This purchase has notes"><StickyNote size={14} strokeWidth={2.2} aria-hidden="true" /></span>}{expense.reminder && <span className="expense-note-indicator" title={`Purchase reminder: ${new Date(expense.reminder.dueAt).toLocaleString()}`} aria-label="This purchase has a reminder"><Bell size={14} strokeWidth={2.2} aria-hidden="true" /></span>}</span>
-                        {(expense.transactionTime || expense.pending) && <small className="expense-transaction-meta">
-                          {expense.transactionTime && <time dateTime={expense.transactionTime}>{expense.transactionTimePrecision === 'time'
-                            ? new Date(expense.transactionTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-                            : new Date(expense.transactionTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}</time>}
-                          {expense.pending && <span className="expense-pending-badge">Pending</span>}
-                        </small>}
-                        {expenseActionError?.expenseId === expense.id && <small className="expense-inline-error" role="alert">{expenseActionError.message}</small>}
-                      </div>
-                      <div className="expense-mobile-amount">
-                        <strong>{formatMoney(expense.amount, expense.reportingCurrency)}</strong>
-                        {expense.split && <small title={`Original purchase ${formatMoney(expense.originalAmount, expense.reportingCurrency)}`}>Your share</small>}
-                      </div>
-                      <div className="expense-actions">
-                        {expense.categories && expense.categories.length > 0 && (
-                          <div className="category-tags expense-category-tags">
-                            {expense.categories.map(cat => (
-                              <span
-                                key={cat}
-                                className={expense.mainCategory == cat ? 'category-tag-main' : 'category-tag'}
-                                style={{ '--category-color': getCategoryColor(cat) }}
-                                onClick={(e) => {
-                                  const clicked = e.currentTarget;
-                                  updateMainExpenseCategory({ ...expense, cardId: card.id }, cat);
-                                  // Get all category tags within the same container
-                                  const allTags = clicked.parentElement.querySelectorAll('.category-tag, .category-tag-main');
-
-                                  // Reset them
-                                  allTags.forEach(tag => {
-                                    tag.classList.remove('category-tag-main');
-                                    tag.classList.add('category-tag');
-                                  });
-
-                                  // Set the clicked one as main
-                                  clicked.classList.remove('category-tag');
-                                  clicked.classList.add('category-tag-main');
-                                }}
-                              >
-                                {cat}
-                                <button
-                                  type="button"
-                                  aria-label={`Remove ${cat} tag`}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    removeCategoryFromExpense({ ...expense, cardId: card.id }, cat);
-                                  }}
-                                  className="category-x category-tag-remove">×</button>
-                              </span>
-                            )).reverse()}
-                          </div>
-                        )}
-                        <div className="category-dropdown-container">
-                          <button
-                            onClick={() => toggleCategoryDropdown(expense.id)}
-                            className="category-button"
-                          >
-                            <span className="category-button-desktop-label">Category ➕</span>
-                            <span className="category-button-mobile-label">+ Category</span>
-                          </button>
-                          {categoryDropdown.expenseId === expense.id && categoryDropdown.isOpen && createPortal((
-                            <div
-                              className="category-picker-overlay"
-                              role="presentation"
-                              onMouseDown={() => setCategoryDropdown({ expenseId: null, isOpen: false })}
-                              onClick={event => event.stopPropagation()}
-                            >
-                              <div
-                                className="dropdown-menu category-dropdown"
-                                role="dialog"
-                                aria-modal="true"
-                                aria-label={`Choose a category for ${expense.description}`}
-                                onMouseDown={event => event.stopPropagation()}
-                                onClick={event => event.stopPropagation()}
-                              >
-                                <div className="category-picker-heading">
-                                  <div><strong>Choose category</strong><span>{expense.description}</span></div>
-                                  <button type="button" aria-label="Close category picker" onClick={() => setCategoryDropdown({ expenseId: null, isOpen: false })}>×</button>
-                                </div>
-                                <div className="category-dropdown-items">
-                                  {visibleCategories.map(cat => {
-                                    const categoryName = typeof cat === 'string' ? cat : cat.name;
-                                    const categoryColor = typeof cat === 'string' ? '#007bff' : cat.color;
-                                    return (
-                                      <div key={categoryName} className="category-dropdown-item category-dropdown-row">
-                                        <span onClick={event => { event.stopPropagation(); addCategoryToExpense({ ...expense, cardId: card.id }, categoryName); }} className="category-dropdown-label">
-                                          {categoryName}
-                                        </span>
-                                        <div
-                                          onClick={event => { event.stopPropagation(); openColorPicker(categoryName); }}
-                                          className="category-color-swatch"
-                                          style={{ '--category-color': categoryColor }}
-                                        ></div>
-                                      </div>
-                                    );
-                                  })}
-                                  {!visibleCategories.length && (
-                                    <div className="category-filter-empty">{newCategoryInput.trim()
-                                      ? <>No matching categories. Press Enter to create “{newCategoryInput.trim()}”.</>
-                                      : 'No categories have been created yet.'}</div>
-                                  )}
-                                </div>
-                                <div className="category-dropdown-separator">
-                                  <input
-                                    type="text"
-                                    placeholder="Filter or create a category"
-                                    value={newCategoryInput}
-                                    onChange={(e) => setNewCategoryInput(e.target.value)}
-                                    maxLength={80}
-                                    onKeyPress={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleNewCategorySubmit({ ...expense, cardId: card.id });
-                                      }
-                                    }}
-                                    className="form-input category-dropdown-input"
-                                    autoFocus
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ), document.body)}
-                        </div>
-                        {(expense.mainCategory || expense.category)
-                          && String(expense.mainCategory || expense.category).toLocaleLowerCase() !== 'uncategorized' && (
-                          <button
-                            type="button"
-                            className={`remember-category-rule${rememberedExpenseIds.has(expense.id) ? ' remembered' : ''}`}
-                            disabled={rememberingExpenseId === expense.id || rememberedExpenseIds.has(expense.id)}
-                            onClick={() => openMerchantRule(expense)}
-                            title="Automatically use this category for future transactions from this merchant"
-                          >
-                            {rememberingExpenseId === expense.id ? 'Saving…' : rememberedExpenseIds.has(expense.id) ? '✓ Remembered' : 'Remember merchant'}
-                          </button>
-                        )}
-                        <span className="text-black expense-amount">{formatMoney(expense.amount, expense.reportingCurrency)}</span>
-                        {expense.split && <small className="expense-split-label" title={`Original purchase ${formatMoney(expense.originalAmount, expense.reportingCurrency)}`}>Your share</small>}
-                        <button type="button" className="expense-row-action split" onClick={() => openSplitPurchase(expense)} title="Split purchase">⇄</button>
-                        <button
-                          type="button"
-                          onClick={() => openExpenseEditor(expense, card.id)}
-                          className="expense-row-action edit"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteExpense(expense, card.id)}
-                          disabled={deletingExpenseId === expense.id}
-                          className="expense-row-action delete"
-                          title={expense.source === 'simplefin' ? 'Hide this synchronized expense' : 'Delete expense'}
-                          aria-label={`Delete ${expense.description}`}
-                        >
-                          {deletingExpenseId === expense.id ? '…' : '×'}
-                        </button>
-                        <div className="expense-mobile-menu-wrap">
-                          <button
-                            type="button"
-                            className="expense-mobile-menu-trigger"
-                            aria-label={`More actions for ${expense.description}`}
-                            aria-expanded={openExpenseMenuId === expense.id}
-                            onClick={() => setOpenExpenseMenuId(current => current === expense.id ? null : expense.id)}
-                          >
-                            ⋮
-                          </button>
-                          {openExpenseMenuId === expense.id && (
-                            <div className="expense-mobile-menu" role="menu">
-                              {(expense.mainCategory || expense.category)
-                                && String(expense.mainCategory || expense.category).toLocaleLowerCase() !== 'uncategorized'
-                                && !rememberedExpenseIds.has(expense.id) && (
-                                <button type="button" role="menuitem" disabled={rememberingExpenseId === expense.id} onClick={() => { setOpenExpenseMenuId(null); openMerchantRule(expense); }}>
-                                  Remember merchant
-                                </button>
-                              )}
-                              <button type="button" role="menuitem" onClick={() => { setOpenExpenseMenuId(null); openSplitPurchase(expense); }}>Split purchase</button>
-                              <button type="button" role="menuitem" onClick={() => { setOpenExpenseMenuId(null); openExpenseEditor(expense, card.id); }}>Edit expense</button>
-                              <button type="button" role="menuitem" className="danger" disabled={deletingExpenseId === expense.id} onClick={() => { setOpenExpenseMenuId(null); deleteExpense(expense, card.id); }}>
-                                {expense.source === 'simplefin' ? 'Hide expense' : 'Delete expense'}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <PurchaseRow key={expense.id} expense={expense} onOpen={() => openPurchase(expense.id)} onTags={() => openPurchase(expense.id, 'tags')} error={expenseActionError?.expenseId === expense.id ? expenseActionError.message : ''} actions={[
+                      { label: 'Purchase details', onClick: () => openPurchase(expense.id) },
+                      { label: 'Edit categories', onClick: () => openPurchase(expense.id, 'tags') },
+                      { label: 'Remember merchant', onClick: () => openMerchantRule({ ...expense, cardId: card.id }), disabled: rememberingExpenseId === expense.id || rememberedExpenseIds.has(expense.id) || !expense.mainCategory || expense.mainCategory.toLocaleLowerCase() === 'uncategorized' },
+                      { label: 'Split purchase', onClick: () => openSplitPurchase(expense) },
+                      { label: 'Edit purchase', onClick: () => openExpenseEditor(expense, card.id) },
+                      { label: 'Suggest vendor icon', onClick: () => { setIconSubmissionError(''); setIconDraft({ entityType: 'merchant', displayName: expense.description, pattern: expense.providerDescription || expense.description, exampleText: expense.providerDescription || expense.description }); } },
+                      { label: expense.source === 'simplefin' ? 'Hide expense' : 'Delete expense', onClick: () => deleteExpense(expense, card.id), disabled: deletingExpenseId === expense.id, danger: true },
+                    ]} />
                   ))
                 )}
               </div>
@@ -1048,67 +607,6 @@ export default function MonthlySpendingPage() {
       })}
       {categoryRuleError && <p className="category-rule-error" role="alert">{categoryRuleError}</p>}
       {categoryRuleNotice && <p className="category-rule-notice" role="status">{categoryRuleNotice}</p>}
-
-      {purchaseDiagnostics && createPortal(
-        <div className="modal-overlay purchase-diagnostics-overlay" role="presentation" onMouseDown={() => setPurchaseDiagnostics(null)}>
-          <div className="modal-content purchase-diagnostics-modal" role="dialog" aria-modal="true" aria-labelledby="purchase-diagnostics-title" onMouseDown={event => event.stopPropagation()}>
-            <div className="purchase-diagnostics-header">
-              <div><span>{showDiagnosticMetadata ? 'Beta · Purchase data inspector' : 'Purchase details'}</span><h2 id="purchase-diagnostics-title">{purchaseDiagnostics.expense.description}</h2><p>{showDiagnosticMetadata ? 'Purchase details, application metadata, and the original SimpleFIN response when available.' : 'Review this purchase and keep private notes for your records.'}</p></div>
-              <button type="button" className="modal-close" aria-label="Close purchase details" onClick={() => setPurchaseDiagnostics(null)}>×</button>
-            </div>
-            {purchaseDiagnostics.loading && <div className="purchase-diagnostics-state">Loading purchase data…</div>}
-            {purchaseDiagnostics.error && <div className="purchase-diagnostics-error" role="alert">{purchaseDiagnostics.error}</div>}
-            {purchaseDiagnostics.data && <div className="purchase-diagnostics-content">
-              <section>
-                <h3>Purchase</h3>
-                <dl className="purchase-diagnostics-grid">
-                  <div><dt>Description</dt><dd>{purchaseDiagnostics.data.purchase.description}</dd></div>
-                  <div><dt>Amount</dt><dd>{formatMoney(purchaseDiagnostics.data.purchase.amount, purchaseDiagnostics.data.purchase.reportingCurrency)}</dd></div>
-                  <div><dt>Date</dt><dd>{purchaseDiagnostics.data.purchase.date || 'Unavailable'}</dd></div>
-                  <div><dt>Primary category</dt><dd>{purchaseDiagnostics.data.purchase.category || 'Uncategorized'}</dd></div>
-                </dl>
-                <div className="purchase-diagnostics-tags"><strong>Tags</strong><div>{(purchaseDiagnostics.data.purchase.tags || []).map(tag => <span key={tag}>{tag}</span>)}</div></div>
-              </section>
-              <section className="purchase-notes-section">
-                <form onSubmit={savePurchaseNotes}>
-                  <div className="purchase-notes-heading"><div><h3>Notes</h3><p>Add context or reminders about this purchase.</p></div><small>{purchaseNotesDraft.length}/2000</small></div>
-                  <textarea value={purchaseNotesDraft} onChange={event => { setPurchaseNotesDraft(event.target.value); setPurchaseNotesSaved(false); }} maxLength={2000} rows={4} placeholder="Add a private note…" aria-label="Purchase notes" />
-                  <div className="purchase-notes-actions">
-                    <span>{purchaseNotesError ? <b role="alert">{purchaseNotesError}</b> : purchaseNotesSaved ? <em role="status">Notes saved</em> : null}</span>
-                    <button type="submit" disabled={savingPurchaseNotes}>{savingPurchaseNotes ? 'Saving…' : 'Save notes'}</button>
-                  </div>
-                </form>
-              </section>
-              <section className="purchase-notes-section">
-                <form onSubmit={event => { event.preventDefault(); savePurchaseReminder(); }}>
-                  <h3>Purchase reminder</h3>
-                  <p>Check back for a refund, return, or anything else. The reminder will appear in your notifications.</p>
-                  <label>Remind me on <input type="datetime-local" value={reminderDraft} onChange={event => setReminderDraft(event.target.value)} required /></label>
-                  <p><small>Times use your local time zone. Add details in the purchase notes above.</small></p>
-                  {purchaseDiagnostics.data.purchase.reminder && <p role="status">{purchaseDiagnostics.data.purchase.reminder.deliveredAt ? 'Reminder delivered' : 'Reminder set'} for {new Date(purchaseDiagnostics.data.purchase.reminder.dueAt).toLocaleString()}.</p>}
-                  <div className="purchase-notes-actions">
-                    <span>{reminderError && <b role="alert">{reminderError}</b>}</span>
-                    {purchaseDiagnostics.data.purchase.reminder && <button type="button" disabled={savingReminder} onClick={() => savePurchaseReminder(true)}>Remove reminder</button>}
-                    <button type="submit" disabled={savingReminder}>{savingReminder ? 'Saving…' : purchaseDiagnostics.data.purchase.reminder ? 'Update reminder' : 'Set reminder'}</button>
-                  </div>
-                </form>
-              </section>
-              {showDiagnosticMetadata && <section>
-                <h3>Application metadata</h3>
-                <pre>{JSON.stringify(purchaseDiagnostics.data.purchase.metadata, null, 2)}</pre>
-              </section>}
-              {showDiagnosticMetadata && <section>
-                <h3>SimpleFIN data</h3>
-                {purchaseDiagnostics.data.simplefin ? <>
-                  <h4>Normalized transaction</h4><pre>{JSON.stringify(purchaseDiagnostics.data.simplefin.transaction, null, 2)}</pre>
-                  <h4>Linked provider account</h4><pre>{JSON.stringify(purchaseDiagnostics.data.simplefin.account, null, 2)}</pre>
-                  <h4>Original provider payload</h4><pre>{JSON.stringify(purchaseDiagnostics.data.simplefin.providerPayload, null, 2)}</pre>
-                </> : <p className="purchase-diagnostics-empty">This is a manual purchase, so there is no SimpleFIN payload.</p>}
-              </section>}
-            </div>}
-          </div>
-        </div>, document.body
-      )}
 
       {merchantRuleDraft && createPortal(
         <div className="modal-overlay merchant-rule-overlay" role="presentation" onMouseDown={() => setMerchantRuleDraft(null)}>
@@ -1418,33 +916,12 @@ export default function MonthlySpendingPage() {
         }}
       />
 
-      {
-        colorPicker.isOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <button onClick={() => setColorPicker({ categoryName: null, isOpen: false, color: '#007bff' })} className="btn-close">×</button>
-              <h3 className="modal-title">Change Color - {colorPicker.categoryName}</h3>
-              <div className="form-group">
-                <input
-                  type="color"
-                  value={colorPicker.color}
-                  onChange={(e) => setColorPicker({ ...colorPicker, color: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-actions-center">
-                <button onClick={updateCategoryColor} className="btn-success">Update Color</button>
-              </div>
-            </div>
-          </div>
-        )
-      }
     </div >
   );
 
   return (
     <div className="page-container text-black monthly-spending-page">
-      <h1 className="page-title">Monthly Spending</h1>
+      <h1 className="page-title">Spending</h1>
       {renderBreadcrumb()}
 
       {currentView === 'years' && renderYearsView()}

@@ -5,15 +5,26 @@ import { useAccount } from '../util/AccountContext';
 import { api } from '../util/api';
 import SplitPurchaseFields from '../components/SplitPurchaseFields';
 import { displayCategoryForExpense, selectCategoryExpenses } from '../util/categoryBrowserSelection';
-import { Download } from 'lucide-react';
+import { Download, Search, SlidersHorizontal } from 'lucide-react';
+import PurchaseRow from '../components/PurchaseRow';
+import Sheet from '../components/Sheet';
+import { usePurchaseNavigation } from '../util/purchaseNavigation';
+import { useMediaQuery } from '../util/useMediaQuery';
+import { useTheme } from '../util/ThemeContext';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip);
+ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip, ChartDataLabels);
 
 
 export default function CategoryBrowserPage() {
     const { account } = useAccount();
+    const { isDarkMode } = useTheme();
+    const openPurchase = usePurchaseNavigation();
+    const isMobile = useMediaQuery('(max-width: 768px)');
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [query, setQuery] = useState('');
     const [searchParams, setSearchParams] = useSearchParams();
     const requestedStart = searchParams.get('start');
     const requestedEnd = searchParams.get('end');
@@ -41,7 +52,7 @@ export default function CategoryBrowserPage() {
     const [actionError, setActionError] = useState('');
     const [analyticsSpending, setAnalyticsSpending] = useState([]);
     const [analyticsLoading, setAnalyticsLoading] = useState(true);
-    const [analyticsRange, setAnalyticsRange] = useState('12months');
+    const [analyticsRange, setAnalyticsRange] = useState(() => ['1months','3months','6months','12months','all','custom'].includes(searchParams.get('range')) ? searchParams.get('range') : '12months');
     const [reportingCurrency, setReportingCurrency] = useState('USD');
     const [generatingReport, setGeneratingReport] = useState(false);
     const categoryBrowserRef = useRef(null);
@@ -49,8 +60,8 @@ export default function CategoryBrowserPage() {
 
     useEffect(() => {
         if (account?.id) {
-            loadCategories();
-            loadCreditCards();
+            loadCategories().catch(error => setActionError(error.message));
+            loadCreditCards().catch(error => setActionError(error.message));
             api.getSplitPeople().then(setSplitPeople).catch(() => {});
             api.getFinancialProfile().then(profile => setReportingCurrency(profile?.reportingCurrency || 'USD')).catch(() => {});
             loadAnalytics();
@@ -60,7 +71,7 @@ export default function CategoryBrowserPage() {
     }, [account]);
 
     useEffect(() => {
-        if (selectedCategories.length && account?.id) {
+        if (account?.id) {
             loadCategoryExpenses();
         } else {
             setExpenses([]);
@@ -68,21 +79,36 @@ export default function CategoryBrowserPage() {
         }
     // loadCategoryExpenses reads the current filter state listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedCategories, timeRange, customStartDate, customEndDate, account]);
+    }, [selectedCategories, timeRange, customStartDate, customEndDate, account, analyticsSpending, creditCards]);
 
     useEffect(() => {
-        const next = new URLSearchParams();
-        selectedCategories.forEach(category => next.append('category', category));
-        if (customStartDate) next.set('start', customStartDate);
-        if (customEndDate) next.set('end', customEndDate);
-        if (browserRequested) next.set('section', 'browser');
-        setSearchParams(next, { replace: true });
-    }, [selectedCategories, customStartDate, customEndDate, browserRequested, setSearchParams]);
+        setSearchParams(current => {
+            const next = new URLSearchParams(current);
+            next.delete('category');
+            selectedCategories.forEach(category => next.append('category', category));
+            if (customStartDate) next.set('start', customStartDate);
+            if (customEndDate) next.set('end', customEndDate);
+            return next;
+        }, { replace: true });
+    }, [selectedCategories, customStartDate, customEndDate, setSearchParams]);
 
     useEffect(() => {
-        if (!browserRequested || analyticsLoading) return;
-        categoryBrowserRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, [browserRequested, analyticsLoading]);
+        const refresh = () => { loadAnalytics(); loadCategories().catch(error => setActionError(error.message)); };
+        window.addEventListener('budget:purchases-updated', refresh);
+        return () => window.removeEventListener('budget:purchases-updated', refresh);
+    }, [account]);
+
+    const selectView = section => { setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', section); return next; }); };
+    const showCategoryTransactions = name => {
+        setSelectedCategories([name]);
+        const now = new Date();
+        const months = analyticsRange === 'all' ? null : parseInt(analyticsRange, 10);
+        if (analyticsRange !== 'custom') {
+            setCustomStartDate(months ? inputDate(new Date(now.getFullYear(), now.getMonth() - months + 1, 1)) : '2000-01-01');
+            setCustomEndDate(inputDate(now)); setTimeRange('custom');
+        }
+        selectView('browser');
+    };
 
     const loadCategories = async () => {
         if (api) {
@@ -120,55 +146,20 @@ export default function CategoryBrowserPage() {
     };
 
     const loadCategoryExpenses = async () => {
-        if (!api || !account?.id || !selectedCategories.length) return;
-
-        setLoading(true);
+        if (!account?.id) return;
         if (!validDate(customStartDate) || !validDate(customEndDate) || customEndDate < customStartDate) {
             setExpenses([]); setTotalAmount(0); setLoading(false); return;
         }
-        const rangeExpenses = [];
-
-        // Get all months in the date range
-        const currentDate = new Date(`${customStartDate.slice(0, 7)}-01T12:00:00Z`);
-        const endMonth = new Date(`${customEndDate.slice(0, 7)}-01T12:00:00Z`);
-        while (currentDate <= endMonth) {
-            const year = currentDate.getUTCFullYear();
-            const month = currentDate.getUTCMonth() + 1;
-
-            try {
-                const monthlyData = await api.getMonthlySpending(account.id, year, month);
-
-                monthlyData.forEach(cardData => {
-                    const card = creditCards.find(c => c.id.toString() === cardData.cardId.toString());
-                    const cardName = card ? `${card.institution} ${card.name}` : `Card ${cardData.cardId}`;
-
-                    cardData.expenses?.forEach(expense => {
-                        const expenseDate = String(expense.date || '').slice(0, 10);
-                        const inExactRange = expenseDate >= customStartDate && expenseDate <= customEndDate;
-                        if (inExactRange) {
-                            rangeExpenses.push({
-                                ...expense,
-                                cardName,
-                                cardId: cardData.cardId,
-                                year,
-                                month,
-                                browserKey: `${cardData.cardId}:${expense.id}`,
-                            });
-                        }
-                    });
-                });
-            } catch (error) {
-                console.error(`Error loading data for ${year}-${month}:`, error);
-            }
-
-            currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
-        }
-
-        const categoryExpenses = selectCategoryExpenses(rangeExpenses, selectedCategories);
-        categoryExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        setExpenses(categoryExpenses);
-        setTotalAmount(categoryExpenses.reduce((total, expense) => total + Number(expense.amount || 0), 0));
+        const rangeExpenses = analyticsSpending.flatMap(record => {
+            const card = creditCards.find(candidate => String(candidate.id) === String(record.cardId));
+            return (record.expenses || []).filter(expense => String(expense.date || '').slice(0, 10) >= customStartDate && String(expense.date || '').slice(0, 10) <= customEndDate).map(expense => ({
+                ...expense, cardName: [card?.name, card?.institution].filter(Boolean).join(' — ') || 'Account',
+                cardId: record.cardId, year: record.year, month: record.month, browserKey: `${record.cardId}:${expense.id}`,
+            }));
+        });
+        const selected = selectedCategories.length ? selectCategoryExpenses(rangeExpenses, selectedCategories) : [...new Map(rangeExpenses.map(expense => [expense.browserKey, { ...expense, displayCategory: expense.mainCategory || expense.category || 'Uncategorized' }])).values()];
+        setExpenses(selected.sort((a, b) => String(b.date).localeCompare(String(a.date))));
+        setTotalAmount(selected.reduce((total, expense) => total + Number(expense.amount || 0), 0));
         setLoading(false);
     };
 
@@ -192,7 +183,7 @@ export default function CategoryBrowserPage() {
     };
 
     const getSortedExpenses = () => {
-        const sortedExpenses = [...expenses];
+        const sortedExpenses = expenses.filter(expense => [expense.description, expense.notes, expense.amount, expense.cardName].join(' ').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
 
         sortedExpenses.sort((a, b) => {
             let aValue, bValue;
@@ -476,8 +467,8 @@ export default function CategoryBrowserPage() {
 
     const analytics = useMemo(() => {
         const now = new Date();
-        const rangeMonths = analyticsRange === 'all' ? null : Number.parseInt(analyticsRange, 10);
-        const start = rangeMonths ? new Date(now.getFullYear(), now.getMonth() - rangeMonths + 1, 1) : null;
+        const rangeMonths = analyticsRange === 'all' ? null : (analyticsRange === 'custom' ? null : Number.parseInt(analyticsRange, 10));
+        const start = analyticsRange === 'custom' ? new Date(`${customStartDate}T00:00:00`) : rangeMonths ? new Date(now.getFullYear(), now.getMonth() - rangeMonths + 1, 1) : null;
         const accountNames = new Map(creditCards.map(card => [String(card.id), [card.name, card.institution].filter(Boolean).join(' — ') || 'Account']));
         const all = analyticsSpending.flatMap(record => (record.expenses || []).map(expense => ({
             ...expense,
@@ -485,7 +476,7 @@ export default function CategoryBrowserPage() {
             month: record.month,
             cardId: record.cardId,
             analyticsDate: new Date(`${String(expense.date || `${record.year}-${String(record.month).padStart(2, '0')}-01`).slice(0, 10)}T12:00:00`),
-        }))).filter(expense => !Number.isNaN(expense.analyticsDate.getTime()) && (!start || expense.analyticsDate >= start) && String(expense.date || '').slice(0, 10) <= inputDate(now));
+        }))).filter(expense => !Number.isNaN(expense.analyticsDate.getTime()) && (!start || expense.analyticsDate >= start) && String(expense.date || '').slice(0, 10) <= (analyticsRange === 'custom' ? customEndDate : inputDate(now)));
 
         const sum = values => values.reduce((total, value) => total + Number(value || 0), 0);
         const categoryTotals = new Map();
@@ -526,13 +517,31 @@ export default function CategoryBrowserPage() {
         const currentSpend = monthlyTotals.get(currentKey) || 0;
         const previousSpend = monthlyTotals.get(previousKey) || 0;
         return { all, total, average: total / activeMonths, currentSpend, monthChange: previousSpend ? ((currentSpend - previousSpend) / Math.abs(previousSpend)) * 100 : null, largest, sortedCategories, sortedMerchants, sortedAccounts, weekdayTotals, monthKeys, monthValues };
-    }, [analyticsSpending, analyticsRange, creditCards]);
+    }, [analyticsSpending, analyticsRange, creditCards, customStartDate, customEndDate]);
 
     const chartBase = {
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 450 },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => money(context.raw) } } },
+        animation: { duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450 },
+        layout: { padding: { top: 18 } },
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: context => money(context.raw) } },
+            datalabels: {
+                display: context => {
+                    const value = Number(context.dataset.data[context.dataIndex]);
+                    if (!Number.isFinite(value) || value === 0) return false;
+                    return context.chart.config.type !== 'line' || context.chart.width >= 500 || context.dataIndex % 2 === 0;
+                },
+                formatter: value => new Intl.NumberFormat(undefined, {
+                    style: 'currency', currency: reportingCurrency,
+                    notation: Math.abs(Number(value)) >= 1000 ? 'compact' : 'standard', maximumFractionDigits: 0,
+                }).format(Number(value)),
+                color: isDarkMode ? '#b0bad0' : '#566074',
+                font: { size: 10, weight: '600' },
+                anchor: 'end', align: 'end', offset: 3, clamp: true,
+            },
+        },
         scales: {
             x: { grid: { display: false }, ticks: { color: '#8791a7', maxRotation: 0, autoSkip: true } },
             y: { beginAtZero: true, grid: { color: 'rgba(127,127,127,.12)' }, ticks: { color: '#8791a7', callback: value => money(value).replace(/\.00$/, '') } },
@@ -540,7 +549,6 @@ export default function CategoryBrowserPage() {
     };
     const wholeNumberChartBase = {
         ...chartBase,
-        plugins: { ...chartBase.plugins, tooltip: { callbacks: { label: context => wholeMoney(context.raw) } } },
         scales: {
             ...chartBase.scales,
             y: { ...chartBase.scales.y, ticks: { ...chartBase.scales.y.ticks, precision: 0, callback: value => wholeMoney(value) } },
@@ -557,65 +565,7 @@ export default function CategoryBrowserPage() {
         );
     }
 
-    return (
-        <div className="page-container category-browser-page">
-            <header className="analytics-page-header">
-                <div><span className="page-eyebrow">Spending intelligence</span><h1 className="page-title">Analytics</h1><p>Understand where, when, and how your spending changes over time.</p></div>
-                <label>Analysis period<select value={analyticsRange} onChange={event => setAnalyticsRange(event.target.value)}><option value="3months">Last 3 months</option><option value="6months">Last 6 months</option><option value="12months">Last 12 months</option><option value="all">All history</option></select></label>
-            </header>
-
-            {analyticsLoading ? <div className="content-card analytics-loading">Building your spending analysis…</div> : <>
-                <section className="analytics-metric-grid" aria-label="Spending highlights">
-                    <article><span>Period spending</span><strong>{money(analytics.total)}</strong><small>{analytics.all.length} transaction{analytics.all.length === 1 ? '' : 's'}</small></article>
-                    <article><span>Monthly average</span><strong>{money(analytics.average)}</strong><small>Across the selected period</small></article>
-                    <article><span>This month</span><strong>{money(analytics.currentSpend)}</strong><small className={analytics.monthChange > 0 ? 'analytics-up' : 'analytics-down'}>{analytics.monthChange == null ? 'No prior-month comparison' : `${Math.abs(analytics.monthChange).toFixed(1)}% ${analytics.monthChange > 0 ? 'more' : 'less'} than last month`}</small></article>
-                    <article><span>Largest purchase</span><strong>{analytics.largest ? money(analytics.largest.amount, analytics.largest.reportingCurrency) : '—'}</strong><small>{analytics.largest?.description || 'No purchases in this period'}</small></article>
-                </section>
-
-                <section className="analytics-dashboard-grid">
-                    <article className="content-card analytics-chart-card analytics-trend-card">
-                        <header><div><span>Momentum</span><h2>Spending over time</h2></div><strong>{analytics.monthKeys.length} months</strong></header>
-                        <div className="analytics-chart analytics-line-chart"><Line data={{ labels: analytics.monthKeys.map(key => new Date(`${key}-01T12:00:00`).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })), datasets: [{ data: analytics.monthValues, borderColor: '#7658dc', backgroundColor: 'rgba(118,88,220,.14)', fill: true, tension: .35, pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: '#7658dc' }] }} options={wholeNumberChartBase} /></div>
-                    </article>
-
-                    <article className="content-card analytics-chart-card analytics-category-card">
-                        <header><div><span>Allocation</span><h2>Category mix</h2></div><strong>{analytics.sortedCategories.length} categories</strong></header>
-                        <div className="analytics-category-layout">
-                            <div className="analytics-donut"><Doughnut data={{ labels: analytics.sortedCategories.map(([name]) => name), datasets: [{ data: analytics.sortedCategories.map(([, value]) => Math.max(0, value)), backgroundColor: analyticsColors, borderWidth: 0, hoverOffset: 5 }] }} options={{ responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { callbacks: { label: context => `${context.label}: ${wholeMoney(context.raw)}` } } } }} /></div>
-                            <div className="analytics-category-list">{analytics.sortedCategories.slice(0, 7).map(([name, value], index) => <div key={name}><i style={{ '--analytics-color': analyticsColors[index] }} /><span>{name}</span><strong>{wholeMoney(value)}</strong><small>{analytics.total ? `${Math.round(Math.max(0, value / analytics.total * 100))}%` : '0%'}</small></div>)}</div>
-                        </div>
-                    </article>
-
-                    <article className="content-card analytics-chart-card">
-                        <header><div><span>Timing</span><h2>Spending by weekday</h2></div></header>
-                        <div className="analytics-chart"><Bar data={{ labels: [...analytics.weekdayTotals.keys()], datasets: [{ data: [...analytics.weekdayTotals.values()], backgroundColor: 'rgba(34,166,179,.72)', borderRadius: 7, borderSkipped: false }] }} options={wholeNumberChartBase} /></div>
-                    </article>
-
-                    <article className="content-card analytics-chart-card">
-                        <header><div><span>Concentration</span><h2>Top merchants</h2></div></header>
-                        <div className="analytics-chart"><Bar data={{ labels: analytics.sortedMerchants.map(([name]) => name.length > 24 ? `${name.slice(0, 23)}…` : name), datasets: [{ data: analytics.sortedMerchants.map(([, value]) => value), backgroundColor: 'rgba(240,147,43,.76)', borderRadius: 7, borderSkipped: false }] }} options={{ ...chartBase, indexAxis: 'y', scales: { x: chartBase.scales.y, y: { grid: { display: false }, ticks: { color: '#8791a7' } } } }} /></div>
-                    </article>
-
-                    <article className="content-card analytics-chart-card analytics-account-card">
-                        <header><div><span>Funding source</span><h2>Spending by account</h2></div></header>
-                        <div className="analytics-account-list">{analytics.sortedAccounts.map(([name, value], index) => <div key={name}><span><i>{index + 1}</i><b>{name}</b></span><strong>{money(value)}</strong><div><i style={{ '--account-share': `${analytics.total ? Math.max(0, value / analytics.total * 100) : 0}%` }} /></div></div>)}{!analytics.sortedAccounts.length && <p>No spending in this period.</p>}</div>
-                    </article>
-
-                    <article className="content-card analytics-insights-card">
-                        <header><div><span>Quick read</span><h2>Habits at a glance</h2></div></header>
-                        <ul>
-                            <li><span>Top category</span><strong>{analytics.sortedCategories[0]?.[0] || 'No data'}</strong><small>{analytics.sortedCategories[0] ? money(analytics.sortedCategories[0][1]) : '—'}</small></li>
-                            <li><span>Most-used merchant</span><strong>{analytics.sortedMerchants[0]?.[0] || 'No data'}</strong><small>{analytics.sortedMerchants[0] ? money(analytics.sortedMerchants[0][1]) : '—'}</small></li>
-                            <li><span>Highest-spend weekday</span><strong>{[...analytics.weekdayTotals.entries()].sort((a,b) => b[1] - a[1])[0]?.[0] || 'No data'}</strong><small>Based on transaction dates</small></li>
-                        </ul>
-                    </article>
-                </section>
-            </>}
-
-            <div className="analytics-browser-heading" ref={categoryBrowserRef}><div><span className="page-eyebrow">Transaction explorer</span><h2>Category browser</h2><p>Inspect individual purchases, adjust category membership, and manage splits.</p></div></div>
-
-            {/* Controls */}
-            <div className="content-card">
+    const renderFilters = () => (<div className="content-card">
                 <div className="category-browser-controls">
                     <div className="form-group category-browser-category-control">
                         <label className="form-label">Categories:</label>
@@ -689,21 +639,92 @@ export default function CategoryBrowserPage() {
                                 </div>
                             </div>
                 </div>
-            </div>
+            </div>);
 
+    return (
+        <div className="page-container category-browser-page">
+            <header className="analytics-page-header">
+                <div><span className="page-eyebrow">Spending intelligence</span><h1 className="page-title">Analytics</h1><p>Understand where, when, and how your spending changes over time.</p></div>
+                {!browserRequested && <label>Analysis period<select value={analyticsRange} onChange={event => { setAnalyticsRange(event.target.value); setSearchParams(current => { const next = new URLSearchParams(current); next.set('range', event.target.value); return next; }, { replace: true }); }}><option value="1months">This month</option><option value="3months">Last 3 months</option><option value="6months">Last 6 months</option><option value="12months">Last 12 months</option><option value="all">All history</option><option value="custom">Custom dates</option></select></label>}
+            </header>
+
+            <div className="ux-tabs" aria-label="Analytics views"><button type="button" aria-pressed={!browserRequested} onClick={() => selectView('overview')}>Overview</button><button type="button" aria-pressed={browserRequested} onClick={() => selectView('browser')}>Transactions</button></div>
+            <div className="ux-analytics-overview" hidden={browserRequested}>
+            {analyticsRange === 'custom' && <div className="ux-custom-dates"><label className="ux-field">Start date<input type="date" value={customStartDate} onChange={event => setCustomStartDate(event.target.value)} /></label><label className="ux-field">End date<input type="date" value={customEndDate} min={customStartDate} onChange={event => setCustomEndDate(event.target.value)} /></label></div>}
+            {analyticsLoading ? <div className="content-card analytics-loading">Building your spending analysis…</div> : <>
+                {!analytics.all.length && <p className="ux-helper" role="status">No purchases in this period. Choose another analysis period to explore your spending.</p>}
+                <section className="analytics-metric-grid" aria-label="Spending highlights">
+                    <article><span>Period spending</span><strong>{money(analytics.total)}</strong><small>{analytics.all.length} transaction{analytics.all.length === 1 ? '' : 's'}</small></article>
+                    <article><span>Monthly average</span><strong>{money(analytics.average)}</strong><small>Across the selected period</small></article>
+                    <article><span>This month</span><strong>{money(analytics.currentSpend)}</strong><small className={analytics.monthChange > 0 ? 'analytics-up' : 'analytics-down'}>{analytics.monthChange == null ? 'No prior-month comparison' : `${Math.abs(analytics.monthChange).toFixed(1)}% ${analytics.monthChange > 0 ? 'more' : 'less'} than last month`}</small></article>
+                    <article><span>Largest purchase</span><strong>{analytics.largest ? money(analytics.largest.amount, analytics.largest.reportingCurrency) : '—'}</strong><small>{analytics.largest?.description || 'No purchases in this period'}</small></article>
+                </section>
+
+                <section className="analytics-dashboard-grid">
+                    <article className="content-card analytics-chart-card analytics-trend-card">
+                        <header><div><span>Momentum</span><h2>Spending over time</h2></div><strong>{analytics.monthKeys.length} months</strong></header>
+                        <div className="analytics-chart analytics-line-chart"><Line data={{ labels: analytics.monthKeys.map(key => new Date(`${key}-01T12:00:00`).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })), datasets: [{ data: analytics.monthValues, borderColor: '#7658dc', backgroundColor: 'rgba(118,88,220,.14)', fill: true, tension: .35, pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: '#7658dc' }] }} options={wholeNumberChartBase} /></div>
+                    </article>
+
+                    <article className="content-card analytics-chart-card analytics-category-card">
+                        <header><div><span>Allocation</span><h2>Category mix</h2></div><strong>{analytics.sortedCategories.length} categories</strong></header>
+                        <p className="ux-sr-only" id="analytics-pie-description">{analytics.sortedCategories.map(([name, value]) => `${name}: ${money(value)}`).join('; ') || 'No category spending in this period.'}</p>
+                        <div className="analytics-category-layout">
+                            <div className="analytics-donut"><Doughnut role="img" aria-label="Overall spending pie chart by category" aria-describedby="analytics-pie-description" data={{ labels: analytics.sortedCategories.map(([name]) => name), datasets: [{ data: analytics.sortedCategories.map(([, value]) => Math.max(0, value)), backgroundColor: analyticsColors, borderWidth: 0, hoverOffset: 5 }] }} options={{ responsive: true, maintainAspectRatio: false, cutout: '68%', onClick: (_, elements) => { if (elements[0]) showCategoryTransactions(analytics.sortedCategories[elements[0].index][0]); }, plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { callbacks: { label: context => `${context.label}: ${wholeMoney(context.raw)}` } } } }} /></div>
+                            <div className="analytics-category-list">{analytics.sortedCategories.slice(0, 7).map(([name, value], index) => <button type="button" key={name} onClick={() => showCategoryTransactions(name)}><i style={{ '--analytics-color': analyticsColors[index] }} /><span>{name}</span><strong>{wholeMoney(value)}</strong><small>{analytics.total ? `${Math.round(Math.max(0, value / analytics.total * 100))}%` : '0%'}</small></button>)}</div>
+                        </div>
+                    </article>
+
+                    <article className="content-card analytics-chart-card">
+                        <header><div><span>Timing</span><h2>Spending by weekday</h2></div></header>
+                        <div className="analytics-chart"><Bar data={{ labels: [...analytics.weekdayTotals.keys()], datasets: [{ data: [...analytics.weekdayTotals.values()], backgroundColor: 'rgba(34,166,179,.72)', borderRadius: 7, borderSkipped: false }] }} options={wholeNumberChartBase} /></div>
+                    </article>
+
+                    <article className="content-card analytics-chart-card">
+                        <header><div><span>Concentration</span><h2>Top merchants</h2></div></header>
+                        <div className="analytics-chart"><Bar data={{ labels: analytics.sortedMerchants.map(([name]) => name.length > 24 ? `${name.slice(0, 23)}…` : name), datasets: [{ data: analytics.sortedMerchants.map(([, value]) => value), backgroundColor: 'rgba(240,147,43,.76)', borderRadius: 7, borderSkipped: false }] }} options={{ ...chartBase, indexAxis: 'y', layout: { padding: { top: 18, right: 48 } }, scales: { x: chartBase.scales.y, y: { grid: { display: false }, ticks: { color: '#8791a7' } } } }} /></div>
+                    </article>
+
+                    <article className="content-card analytics-chart-card analytics-account-card">
+                        <header><div><span>Funding source</span><h2>Spending by account</h2></div></header>
+                        <div className="analytics-account-list">{analytics.sortedAccounts.map(([name, value], index) => <div key={name}><span><i>{index + 1}</i><b>{name}</b></span><strong>{money(value)}</strong><div><i style={{ '--account-share': `${analytics.total ? Math.max(0, value / analytics.total * 100) : 0}%` }} /></div></div>)}{!analytics.sortedAccounts.length && <p>No spending in this period.</p>}</div>
+                    </article>
+
+                    <article className="content-card analytics-insights-card">
+                        <header><div><span>Quick read</span><h2>Habits at a glance</h2></div></header>
+                        <ul>
+                            <li><span>Top category</span><strong>{analytics.sortedCategories[0]?.[0] || 'No data'}</strong><small>{analytics.sortedCategories[0] ? money(analytics.sortedCategories[0][1]) : '—'}</small></li>
+                            <li><span>Most-used merchant</span><strong>{analytics.sortedMerchants[0]?.[0] || 'No data'}</strong><small>{analytics.sortedMerchants[0] ? money(analytics.sortedMerchants[0][1]) : '—'}</small></li>
+                            <li><span>Highest-spend weekday</span><strong>{[...analytics.weekdayTotals.entries()].sort((a,b) => b[1] - a[1])[0]?.[0] || 'No data'}</strong><small>Based on transaction dates</small></li>
+                        </ul>
+                    </article>
+                </section>
+            </>}
+
+            </div>
+            <section hidden={!browserRequested}>
+            <div className="analytics-browser-heading" ref={categoryBrowserRef}><div><span className="page-eyebrow">Transaction explorer</span><h2>Category browser</h2><p>Inspect individual purchases, adjust category membership, and manage splits.</p></div></div>
+
+            <div className="ux-explorer-toolbar"><label className="ux-search"><Search size={18} /><input aria-label="Search analytics purchases" placeholder="Search purchases, notes, or amount" value={query} onChange={event => setQuery(event.target.value)} /></label>
+            {isMobile && <button type="button" className="ux-secondary" onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={17} /> Filters{selectedCategories.length ? ` · ${selectedCategories.length}` : ''}</button>}
+            <label className="ux-sort-label">Sort<select value={`${sortConfig.key}:${sortConfig.direction}`} onChange={event => { const [key, direction] = event.target.value.split(':'); setSortConfig({ key, direction }); }}><option value="date:desc">Newest first</option><option value="date:asc">Oldest first</option><option value="amount:desc">Largest first</option><option value="description:asc">Merchant A–Z</option></select></label></div>
+            {!isMobile && renderFilters()}
+            {isMobile && filtersOpen && <Sheet title="Transaction filters" onClose={() => setFiltersOpen(false)} footer={<button type="button" className="ux-primary" onClick={() => setFiltersOpen(false)}>Show results</button>}>{renderFilters()}</Sheet>}
+            {!!selectedCategories.length && <div className="ux-wrapping-tags">{selectedCategories.map(name => <button type="button" className="ux-chip" key={name} onClick={() => removeCategoryFilter(name)} aria-label={`Remove ${name} from the category filter`}>{name} ×</button>)}</div>}
+            {customEndDate < customStartDate && <p className="ux-error" role="alert">End date must be on or after the start date.</p>}
             {/* Results */}
-            {!!selectedCategories.length && (
+            {browserRequested && (
                 <div className="content-card">
                     <div className="category-browser-summary">
                         <h2 style={{ '--category-color': getCategoryColor(selectedCategory) }}>
                             <span
                                 className="category-browser-dot"
                             ></span>
-                            {selectedCategories.length === 1 ? selectedCategory : 'Combined category spending'}
+                            {!selectedCategories.length ? 'All purchases' : selectedCategories.length === 1 ? selectedCategory : 'Combined category spending'}
                         </h2>
                         <div className="category-browser-summary-actions">
                             <div className="category-browser-total">
-                                Total: ${totalAmount.toFixed(2)}
+                                Total: {money(totalAmount)}
                             </div>
                             <button type="button" className="category-report-download" disabled={loading || !expenses.length || generatingReport} onClick={downloadCategoryReport}>
                                 <Download size={15} aria-hidden="true" />
@@ -713,17 +734,17 @@ export default function CategoryBrowserPage() {
                     </div>
                     {actionError && <p className="category-rule-error" role="alert">{actionError}</p>}
 
-                    {loading ? (
+                    {loading || analyticsLoading ? (
                         <p>Loading expenses...</p>
                     ) : expenses.length === 0 ? (
                         <p>No expenses found for the selected categories in this time range.</p>
                     ) : (
                         <div>
                             <p className="category-browser-count">
-                                Found {expenses.length} unique expense{expenses.length !== 1 ? 's' : ''} across {selectedCategories.length} categor{selectedCategories.length === 1 ? 'y' : 'ies'}
+                                {expenses.length} unique purchase{expenses.length !== 1 ? 's' : ''}{selectedCategories.length ? ` across ${selectedCategories.length} categor${selectedCategories.length === 1 ? 'y' : 'ies'}` : ' matching your filters'}
                             </p>
 
-                            <section className="category-split-totals" aria-labelledby="category-split-totals-title">
+                            {splitTotals.splitPurchaseCount > 0 && <details className="ux-advanced ux-split-details"><summary>Split totals · {splitTotals.splitPurchaseCount} purchases</summary><section className="category-split-totals" aria-labelledby="category-split-totals-title">
                                 <div className="category-split-totals-heading">
                                     <div>
                                         <span>Shared expenses</span>
@@ -738,10 +759,16 @@ export default function CategoryBrowserPage() {
                                         <b>{money(person.amount)}</b>
                                     </div>)}
                                 </div> : <p className="category-split-totals-empty">None of these purchases are currently split with anyone.</p>}
-                            </section>
+                            </section></details>}
 
                             {/* Expenses Table */}
-                            <div className="data-table-wrap">
+                            <div className="ux-explorer-mobile-list">{getSortedExpenses().map(expense => <PurchaseRow key={expense.browserKey} expense={expense} onOpen={() => openPurchase(expense.id)} onTags={() => openPurchase(expense.id, 'tags')} actions={[
+                                { label: 'Purchase details', onClick: () => openPurchase(expense.id) },
+                                { label: 'Edit tags', onClick: () => openPurchase(expense.id, 'tags') },
+                                { label: 'Split purchase', onClick: () => openSplitPurchase(expense) },
+                                ...(selectedCategories.length ? [{ label: `Remove ${expense.displayCategory} tag`, onClick: () => removeDisplayedCategory(expense), disabled: removingExpenseId === expense.id, danger: true }] : []),
+                            ]} />)}{!getSortedExpenses().length && <p className="ux-empty">No purchases match your search.</p>}</div>
+                            <div className="data-table-wrap ux-explorer-desktop-table">
                                 <table className="data-table category-browser-table">
                                     <thead>
                                         <tr>
@@ -785,7 +812,7 @@ export default function CategoryBrowserPage() {
                                                 </td>
                                                 <td data-label="Description">
                                                     <div className="category-purchase-name">
-                                                        <span>{expense.description}</span>
+                                                        <button type="button" className="ux-table-purchase" onClick={() => openPurchase(expense.id)}>{expense.icon?.url ? <img className="ux-vendor-icon" src={expense.icon.url} alt="" /> : <span className="ux-vendor-icon ux-vendor-fallback">{expense.description.slice(0,1)}</span>}<span>{expense.description}</span></button>
                                                         <button type="button" className="category-purchase-remove" disabled={removingExpenseId === expense.id} onClick={() => removeDisplayedCategory(expense)} aria-label={`Remove ${expense.displayCategory} from ${expense.description}`} title={`Remove ${expense.displayCategory} from this purchase`}>
                                                             {removingExpenseId === expense.id ? '…' : '×'}
                                                         </button>
@@ -839,6 +866,7 @@ export default function CategoryBrowserPage() {
                     )}
                 </div>
             )}
+            </section>
             {splitDraft && createPortal(<div className="modal-overlay" onMouseDown={() => setSplitDraft(null)}>
                 <form className="modal-content split-purchase-modal" onSubmit={saveSplitPurchase} onMouseDown={event => event.stopPropagation()}>
                     <button type="button" className="btn-close" onClick={() => setSplitDraft(null)}>×</button>

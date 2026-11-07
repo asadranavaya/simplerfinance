@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import UpcomingEvents from '../components/UpcomingEvents';
 import { useAccount } from '../util/AccountContext';
 import { useAuth } from '../util/AuthContext';
 import { api } from '../util/api';
 import { useTheme } from '../util/ThemeContext';
 import { useUpcomingEvents } from '../util/useUpcomingEvents';
-import { ArrowLeft, ChevronDown, History, Link2, Unlink, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, History, Link2, Unlink } from 'lucide-react';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { account } = useAccount();
   const upcomingEvents = useUpcomingEvents(account?.id);
-  const [removingReminderId, setRemovingReminderId] = useState(null);
-  const [reminderRemovalError, setReminderRemovalError] = useState('');
-  const removeUpcomingReminder = async expenseId => {
-    setRemovingReminderId(expenseId);
-    setReminderRemovalError('');
-    try { await upcomingEvents.removeReminder(expenseId); }
-    catch (error) { setReminderRemovalError(error.message || 'Unable to remove this reminder.'); }
-    finally { setRemovingReminderId(null); }
-  };
   const { user, setUser, logout } = useAuth();
   const { isDarkMode, toggleTheme, colorTheme, setColorTheme } = useTheme();
 
@@ -82,7 +74,10 @@ export default function SettingsPage() {
   const [deleteConnectionId, setDeleteConnectionId] = useState(null);
   const [deleteConnectionConfirmation, setDeleteConnectionConfirmation] = useState('');
   const [deletingConnectionId, setDeletingConnectionId] = useState(null);
-  const [activeSettingsPanel, setActiveSettingsPanel] = useState(null);
+  const [panelParams, setPanelParams] = useSearchParams();
+  const validPanels = ['profile','financial','email','password','security','appearance','categorization','splits','travel','simplefin','upcoming'];
+  const activeSettingsPanel = validPanels.includes(panelParams.get('panel')) ? panelParams.get('panel') : null;
+  const setActiveSettingsPanel = panel => setPanelParams(current => { const next = new URLSearchParams(current); if (panel) next.set('panel', panel); else next.delete('panel'); return next; });
   const [importRangePresets, setImportRangePresets] = useState({});
   const [customImportDates, setCustomImportDates] = useState({});
   const [linkedImportDates, setLinkedImportDates] = useState({});
@@ -769,7 +764,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container ux-settings-page">
       <h1 className="page-title">Settings</h1>
 
       <div className={`settings-workspace${activeSettingsPanel ? ' showing-detail' : ''}`}>
@@ -780,18 +775,21 @@ export default function SettingsPage() {
               <h2>What would you like to manage?</h2>
               <p>Choose a setting to open its controls.</p>
             </div>
-            <div className="settings-hub-grid">
-              <SettingsMenuCard icon="👤" title="Profile name" detail={account?.name || 'Set your display name'} onClick={() => setActiveSettingsPanel('profile')} />
-              <SettingsMenuCard icon="🔔" title="Upcoming events" detail={`${upcomingEvents.events.length} purchase reminder${upcomingEvents.events.length === 1 ? '' : 's'}`} onClick={() => setActiveSettingsPanel('upcoming')} />
-              {user?.role !== 'admin' && <SettingsMenuCard icon="💼" title="Financial profile" detail={financialProfile?.yearlyIncome ? `$${Number(financialProfile.yearlyIncome).toLocaleString()} yearly income` : 'Set income and savings targets'} onClick={() => setActiveSettingsPanel('financial')} />}
-              <SettingsMenuCard icon="✉️" title="Email address" detail={user?.email || 'Manage your sign-in email'} onClick={() => setActiveSettingsPanel('email')} />
-              <SettingsMenuCard icon="🔒" title="Password" detail="Update your account password" onClick={() => setActiveSettingsPanel('password')} />
-              <SettingsMenuCard icon="🔐" title="Two-factor authentication" detail={mfaEnabled ? 'Enabled' : 'Not enabled'} tone={mfaEnabled ? 'success' : ''} onClick={() => setActiveSettingsPanel('security')} />
-              <SettingsMenuCard icon="◐" title="Appearance" detail={`${colorTheme[0].toUpperCase()}${colorTheme.slice(1)} · ${isDarkMode ? 'Dark' : 'Light'}`} onClick={() => setActiveSettingsPanel('appearance')} />
-              {user?.role !== 'admin' && <SettingsMenuCard icon="⌁" title="Categorization rules" detail={categoryRules.length ? `${categoryRules.length} remembered merchant${categoryRules.length === 1 ? '' : 's'}` : 'No remembered merchants yet'} onClick={() => setActiveSettingsPanel('categorization')} />}
-              {user?.role !== 'admin' && <SettingsMenuCard icon="👥" title="Split purchases" detail={splitPeople.length ? `${splitPeople.length} people` : 'Add people to split costs with'} onClick={() => setActiveSettingsPanel('splits')} />}
-              {user?.role !== 'admin' && <SettingsMenuCard icon="✈️" title="Travel" detail={travelPlans.length ? `${travelPlans.length} planned or past trip${travelPlans.length === 1 ? '' : 's'}` : 'Tag spending by trip dates'} onClick={() => setActiveSettingsPanel('travel')} />}
-              {user?.role !== 'admin' && <SettingsMenuCard icon="S" title="SimpleFIN Bridge" detail={simplefinConnections.length ? `${simplefinConnections.length} connection${simplefinConnections.length === 1 ? '' : 's'}` : 'Connect financial institutions'} tone={simplefinConnections.some(row => row.status === 'active') ? 'success' : ''} onClick={() => setActiveSettingsPanel('simplefin')} />}
+            {user?.role !== 'admin' && <><h3 className="ux-settings-group-title">Your finances</h3><div className="settings-hub-grid">
+              <SettingsMenuCard icon="⌁" title="Connections" detail={simplefinConnections.some(row => ['reconnect_required','revoked','disabled'].includes(row.status)) ? 'Needs attention' : `${simplefinConnections.length} connected services`} onClick={() => setActiveSettingsPanel('simplefin')} />
+              <SettingsMenuCard icon="🔔" title="Upcoming events" detail={`${upcomingEvents.events.length} purchase reminders`} onClick={() => setActiveSettingsPanel('upcoming')} />
+              <SettingsMenuCard icon="▦" title="Subscriptions" detail="Recurring payments and calendar" onClick={() => navigate('/detected-subscriptions')} />
+              <SettingsMenuCard icon="💼" title="Financial profile" detail={financialProfile?.yearlyIncome ? `$${Number(financialProfile.yearlyIncome).toLocaleString()} yearly income` : 'Income and savings targets'} onClick={() => setActiveSettingsPanel('financial')} />
+              <SettingsMenuCard icon="⌁" title="Categories & rules" detail={`${categoryRules.length} remembered merchants`} onClick={() => setActiveSettingsPanel('categorization')} />
+              <SettingsMenuCard icon="👥" title="Split purchases" detail={`${splitPeople.length} people`} onClick={() => setActiveSettingsPanel('splits')} />
+              <SettingsMenuCard icon="✈️" title="Travel" detail="Spending by trip" onClick={() => setActiveSettingsPanel('travel')} />
+            </div></>}
+            <h3 className="ux-settings-group-title">Account & security</h3><div className="settings-hub-grid">
+              <SettingsMenuCard icon="👤" title="Profile name" detail={account?.name || 'Your display name'} onClick={() => setActiveSettingsPanel('profile')} />
+              <SettingsMenuCard icon="✉️" title="Email address" detail={user?.email} onClick={() => setActiveSettingsPanel('email')} />
+              <SettingsMenuCard icon="🔒" title="Password" detail="Update your sign-in password" onClick={() => setActiveSettingsPanel('password')} />
+              <SettingsMenuCard icon="🔐" title="Security & trusted devices" detail={mfaEnabled ? 'Two-factor authentication enabled' : 'Set up two-factor authentication'} onClick={() => setActiveSettingsPanel('security')} />
+              <SettingsMenuCard icon="◐" title="Appearance" detail={`${colorTheme} · ${isDarkMode ? 'Dark' : 'Light'}`} onClick={() => setActiveSettingsPanel('appearance')} />
             </div>
           </section>
 
@@ -1142,17 +1140,7 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {activeSettingsPanel === 'upcoming' && <section className="full-width-card settings-focus-card">
-        <h2>Upcoming events</h2>
-        <p>Scheduled purchase reminders, shown in your local time zone.</p>
-        {upcomingEvents.error && <p role="alert">{upcomingEvents.error}</p>}
-        {reminderRemovalError && <p role="alert">{reminderRemovalError}</p>}
-        {upcomingEvents.loading ? <p>Loading upcoming events…</p> : !upcomingEvents.error && !upcomingEvents.events.length ? <p>No upcoming purchase reminders. Set one by clicking a purchase.</p> : null}
-        <div className="travel-plan-list">{upcomingEvents.events.map(event => <article className="travel-plan-link upcoming-event" key={event.expenseId}>
-          <div className="upcoming-event-copy"><strong>🔔 {event.description}</strong><time dateTime={event.dueAt}>{new Date(event.dueAt).toLocaleString()}</time>{event.notes?.trim() && <small className="upcoming-event-note">{event.notes}</small>}</div>
-          <button type="button" className="upcoming-event-remove" title="Remove scheduled reminder (keeps purchase notes)" aria-label={`Remove reminder for ${event.description}`} disabled={removingReminderId !== null} onClick={() => removeUpcomingReminder(event.expenseId)}><X size={16} aria-hidden="true" /></button>
-        </article>)}</div>
-      </section>}
+      {activeSettingsPanel === 'upcoming' && <section className="full-width-card settings-focus-card"><h2>Upcoming events</h2><p>Scheduled reminders for your purchases.</p><UpcomingEvents /></section>}
       {user?.role !== 'admin' && activeSettingsPanel === 'splits' && <section className="full-width-card settings-focus-card split-people-card">
         <h2>👥 Split purchases</h2>
         <p>Add people you commonly share purchases with. Names are encrypted with your customer key.</p>
@@ -1241,7 +1229,7 @@ export default function SettingsPage() {
                                   <i aria-hidden="true" />
                                   {simplefinStatusLabel(connection.status)}
                                 </span>
-                                <h3>Connection {simplefinConnections.length > 1 ? index + 1 : ''}</h3>
+                                <h3>{[...new Set(discovered.map(row => row.institutionName).filter(Boolean))].join(', ') || connection.institutionName || `Connection ${index + 1}`}</h3>
                               </div>
                               <button
                                 type="button"
@@ -1255,31 +1243,7 @@ export default function SettingsPage() {
                               </button>
                             </div>
 
-                            <div className="simplefin-metadata">
-                              <span><small>Last successful sync</small>{formatSimplefinDate(connection.lastSyncSucceededAt)}</span>
-                              <span><small>Connected</small>{formatSimplefinDate(connection.createdAt)}</span>
-                              <span><small>Accounts found</small>{discovered.length}</span>
-                            </div>
-
-                            <div className="simplefin-auto-sync-row">
-                              <div>
-                                <strong>Automatic sync</strong>
-                                <span>{connection.autoSyncEnabled
-                                  ? <><span>Next run {formatSimplefinDate(connection.nextScheduledSyncAt)}</span><SyncCountdown value={connection.nextScheduledSyncAt} syncing={connection.status === 'syncing'} /></>
-                                  : 'Scheduled synchronization is paused'}</span>
-                              </div>
-                              <label className="simplefin-switch">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(connection.autoSyncEnabled)}
-                                  disabled={updatingAutoSyncId === connection.id || connection.status !== 'active'}
-                                  onChange={event => handleAutoSyncToggle(connection, event.target.checked)}
-                                  aria-label={`Automatic sync for connection ${index + 1}`}
-                                />
-                                <span aria-hidden="true" />
-                              </label>
-                            </div>
-
+                            <p className="ux-helper">Last successful update: {formatSimplefinDate(connection.lastSyncSucceededAt)}</p>
                             {['disabled', 'reconnect_required', 'revoked'].includes(connection.status) ? (
                               <div className="simplefin-reconnect-panel">
                                 <div className="simplefin-reconnect-copy">
@@ -1379,6 +1343,32 @@ export default function SettingsPage() {
                             {connection.needsAttention && (
                               <p className="simplefin-connection-warning" role="alert"><span aria-hidden="true">!</span>{connection.status === 'reconnect_required' ? 'Reconnect this connection to resume synchronization.' : `${connection.consecutiveFailures} consecutive synchronization attempts failed. Review sync history or reconnect if failures continue.`}</p>
                             )}
+
+                            <details className="ux-advanced ux-connection-details"><summary>Linked accounts, sync history & advanced options</summary>
+                            <div className="simplefin-metadata">
+                              <span><small>Last successful sync</small>{formatSimplefinDate(connection.lastSyncSucceededAt)}</span>
+                              <span><small>Connected</small>{formatSimplefinDate(connection.createdAt)}</span>
+                              <span><small>Accounts found</small>{discovered.length}</span>
+                            </div>
+
+                            <div className="simplefin-auto-sync-row">
+                              <div>
+                                <strong>Automatic sync</strong>
+                                <span>{connection.autoSyncEnabled
+                                  ? <><span>Next run {formatSimplefinDate(connection.nextScheduledSyncAt)}</span><SyncCountdown value={connection.nextScheduledSyncAt} syncing={connection.status === 'syncing'} /></>
+                                  : 'Scheduled synchronization is paused'}</span>
+                              </div>
+                              <label className="simplefin-switch">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(connection.autoSyncEnabled)}
+                                  disabled={updatingAutoSyncId === connection.id || connection.status !== 'active'}
+                                  onChange={event => handleAutoSyncToggle(connection, event.target.checked)}
+                                  aria-label={`Automatic sync for connection ${index + 1}`}
+                                />
+                                <span aria-hidden="true" />
+                              </label>
+                            </div>
 
                             <section className="simplefin-audit" aria-labelledby={`simplefin-audit-${connection.id}`}>
                               <button
@@ -1495,6 +1485,7 @@ export default function SettingsPage() {
                                 No accounts have been discovered yet. Retry discovery when the connection is available.
                               </div>
                             )}
+                            </details>
                           </article>
                         );
                       })}

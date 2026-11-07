@@ -40,6 +40,12 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Install browser for UX checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Check responsive layouts and purchase workflows
+        run: node --require ./test/setup.js test/customerUx.browser.cjs
+
       - name: Audit production dependencies
         run: |
           npm audit --omit=dev

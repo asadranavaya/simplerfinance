@@ -1,4 +1,4 @@
-export default function SplitPurchaseFields({ people, draft, setDraft, maximum, assigned, saving, formatMoney }) {
+export default function SplitPurchaseFields({ people, draft, setDraft, maximum, assigned, saving, formatMoney, showSubmit = true }) {
   if (!people.length) return <p className="category-rule-notice">Add people under Settings → Split purchases first.</p>;
   const selectedIds = new Set(draft.allocations.map(allocation => allocation.personId));
   const eligible = people.filter(person => !selectedIds.has(person.id));
@@ -67,6 +67,6 @@ export default function SplitPurchaseFields({ people, draft, setDraft, maximum, 
       <span>Others: {draft.mode === 'percent' ? `${assigned.toFixed(2)}%` : formatMoney(assigned, draft.expense.reportingCurrency)}</span>
       <strong>Your share: {draft.mode === 'percent' ? `${Math.max(0, 100 - assigned).toFixed(2)}%` : formatMoney(Math.max(0, maximum - assigned), draft.expense.reportingCurrency)}</strong>
     </div>
-    <button type="submit" disabled={saving || incomplete || assigned > maximum}>{saving ? 'Saving…' : 'Save split'}</button>
+    {showSubmit && <button type="submit" disabled={saving || incomplete || assigned > maximum}>{saving ? 'Saving…' : 'Save split'}</button>}
   </>;
 }

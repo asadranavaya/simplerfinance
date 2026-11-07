@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, Link, useSearchParams } from 'react-router-dom';
+import { ChartNoAxesCombined } from 'lucide-react';
 import { AuthProvider, useAuth } from './util/AuthContext';
 import { ThemeProvider } from './util/ThemeContext';
 import ProtectedRoute from './util/ProtectedRoute';
@@ -7,8 +8,12 @@ import AdminRoute from './util/AdminRoute';
 import Sidebar from './components/Sidebar';
 import NotificationCenter from './components/NotificationCenter';
 import ServerErrorBanner from './components/ServerErrorBanner';
+import MobileNavigation from './components/MobileNavigation';
+import PurchaseDetails from './components/PurchaseDetails';
+import { NotificationProvider } from './util/NotificationContext';
 
 import './App.css';
+import './ux.css';
 
 const LoginPage = lazy(() => import('./pages/login'));
 const RegisterPage = lazy(() => import('./pages/register'));
@@ -16,6 +21,8 @@ const OverviewPage = lazy(() => import('./pages/overview'));
 const AccountOverview = lazy(() => import('./pages/accounts_overview'));
 const MonthlySpendingPage = lazy(() => import('./pages/monthly_spending'));
 const SettingsPage = lazy(() => import('./pages/settings'));
+const MorePage = lazy(() => import('./pages/more'));
+const ActivityPage = lazy(() => import('./pages/activity'));
 const CategoryBrowserPage = lazy(() => import('./pages/category_browser'));
 const DetectedSubscriptionsPage = lazy(() => import('./pages/detected_subscriptions'));
 const AdminDashboard = lazy(() => import('./pages/admin_dashboard'));
@@ -32,6 +39,9 @@ function RoleLanding() {
 function AppRoutes() {
   const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_MEDIA_QUERY).matches);
+  const [params, setParams] = useSearchParams();
+  const purchaseId = params.get('purchase');
+  const closePurchase = () => { const next = new URLSearchParams(params); next.delete('purchase'); next.delete('edit'); setParams(next, { replace: true }); };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
   const lastDataRefreshAt = useRef(Date.now());
@@ -84,10 +94,10 @@ function AppRoutes() {
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
-    <div className="page-grid">
+    <div className={`page-grid app-shell${user ? ' signed-in' : ''}${user?.role === 'admin' ? ' admin-shell' : ' customer-shell'}`}>
       <ServerErrorBanner />
       {/* Hamburger button — mobile only */}
-      {user && isMobile && !sidebarOpen && (
+      {user?.role === 'admin' && isMobile && !sidebarOpen && (
         <button
           className="hamburger-btn"
           onClick={toggleSidebar}
@@ -101,7 +111,7 @@ function AppRoutes() {
       {!isMobile && user && <Sidebar key={`sidebar-${dataRefreshKey}`} />}
 
       {/* Mobile sidebar drawer — slides from left */}
-      {user && isMobile && (
+      {user?.role === 'admin' && isMobile && (
         <>
           <div
             className={`sidebar-backdrop${sidebarOpen ? ' active' : ''}`}
@@ -117,7 +127,7 @@ function AppRoutes() {
       )}
 
       <div className={`main-content${user ? '' : ' public-content'}`}>
-        {user && <NotificationCenter key={`notifications-${dataRefreshKey}`} />}
+        {user && <header className="ux-app-header"><Link className="ux-wordmark" to={user.role === 'admin' ? '/admin' : '/overview'}><span><ChartNoAxesCombined size={20} /></span>SimplerFinance</Link><div className="ux-header-actions"><NotificationCenter /><Link className="ux-avatar" to="/settings" aria-label="Your profile">{(user.name || user.email || 'U').slice(0, 1).toUpperCase()}</Link></div></header>}
         <Suspense fallback={<div className="route-loading" role="status">Loading…</div>}>
           <Routes key={`routes-${dataRefreshKey}`}>
             {/* Public */}
@@ -132,6 +142,8 @@ function AppRoutes() {
             <Route path="/category-browser"  element={<ProtectedRoute><CategoryBrowserPage /></ProtectedRoute>} />
             <Route path="/detected-subscriptions" element={<ProtectedRoute><DetectedSubscriptionsPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/more" element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
+            <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/admin/accounts" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/admin/site-identity" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -142,17 +154,19 @@ function AppRoutes() {
           </Routes>
         </Suspense>
       </div>
+      {user && isMobile && user.role !== 'admin' && <MobileNavigation />}
+      {user && purchaseId && <PurchaseDetails key={purchaseId} expenseId={purchaseId} initialMode={params.get('edit')} onClose={closePurchase} />}
     </div>
   );
 }
+
+const router = createBrowserRouter([{ path: '*', element: <NotificationProvider><AppRoutes /></NotificationProvider> }]);
 
 function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <RouterProvider router={router} />
       </ThemeProvider>
     </AuthProvider>
   );
