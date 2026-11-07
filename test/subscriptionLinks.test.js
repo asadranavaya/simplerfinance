@@ -87,6 +87,8 @@ test('detection retains manually linked rows when they are not currently redisco
 });
 
 test('manual links override automatic amount variance and choose one representative charge per month', (t) => {
+  // Activity depends on the last payment month; keep this fixed-date fixture stable.
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-08-31T12:00:00Z') });
   const accountId = `subscription-link-override-${crypto.randomUUID()}`;
   const targetId = `sub_${crypto.randomUUID()}`;
   const sourceId = `sub_${crypto.randomUUID()}`;

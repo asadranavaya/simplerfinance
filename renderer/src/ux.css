@@ -167,6 +167,7 @@ input.ux-switch { width: 36px; height: 22px; accent-color: var(--ux-accent); }
 .app-shell .dashboard-page .two-column-layout { grid-template-columns: 1fr; }
 .app-shell .dashboard-page .spending-category-card { padding: 20px; }
 .ux-overview-history { margin: 12px 0 24px; }
+.ux-overview-history > h2 { margin: 0 0 18px; }
 .ux-settings-group { background: var(--ux-paper); border-radius: 14px; border: 1px solid var(--ux-line); padding: 0 15px; }
 .ux-setting-row { display: flex; align-items: center; gap: 12px; padding: 15px 0; min-height: 64px; border-top: 1px solid var(--ux-line); color: var(--ux-ink); text-decoration: none; }
 .ux-setting-row:first-child { border-top: 0; }
@@ -198,10 +199,7 @@ input.ux-switch { width: 36px; height: 22px; accent-color: var(--ux-accent); }
 .ux-account-balance small { display: block; font-size: 9px; font-weight: 400; color: var(--ux-muted); margin-top: 4px; }
 .ux-account-open > svg { flex-shrink: 0; }
 .ux-analytics-overview[hidden], .category-browser-page > section[hidden] { display: none; }
-.ux-analytics-overview:not(.show-all) .analytics-dashboard-grid > article:nth-child(n+3) { display: none; }
-.ux-analytics-overview:not(.show-all) .analytics-metric-grid > article:nth-child(n+3) { display: none; }
 .ux-split-details .category-split-totals-heading { display: none; }
-.ux-more-charts { width: 100%; margin-bottom: 20px; }
 .ux-explorer-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
 .ux-explorer-toolbar .ux-search { flex: 1; margin: 0; }
 .ux-sort-label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ux-muted); }

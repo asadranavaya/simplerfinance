@@ -375,7 +375,7 @@ export default function OverviewPage() {
 
       {loadError && <p className="ux-error" role="alert">{loadError} <button type="button" className="ux-text-button" onClick={() => loadAll().catch(error => setLoadError(error.message))}>Try again</button></p>}
       <OverviewSummary profile={financialProfile} spending={allSpending} />
-      <details className="ux-advanced ux-overview-history"><summary>Spending history & category charts</summary>
+      <section className="ux-overview-history" aria-labelledby="overview-spending-history-title"><h2 className="section-title" id="overview-spending-history-title">Spending history & category charts</h2>
       <div className="two-column-layout">
         {/* Monthly Spending Chart Card */}
         <div className="content-card">
@@ -489,7 +489,7 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      </details>
+      </section>
       {/* Financial Goals Full Width Card */}
       <div className="content-card full-width-content-card">
         <div className="section-header">

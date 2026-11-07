@@ -72,12 +72,25 @@ async function run() {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {}), args: ['--no-sandbox'] });
     for (const width of widths) {
       const context = await browser.newContext({ viewport: { width, height: 950 }, isMobile: width < 769, hasTouch: width < 769 });
+      await context.addInitScript(() => {
+        window.analyticsDrawnLabels = [];
+        const draw = CanvasRenderingContext2D.prototype.fillText;
+        CanvasRenderingContext2D.prototype.fillText = function(text, ...args) {
+          if (this.canvas.closest('.category-browser-page')) window.analyticsDrawnLabels.push(String(text));
+          return draw.call(this, text, ...args);
+        };
+      });
       await context.addCookies([{ name: 'token', value: token, url: base }]);
       const page = await context.newPage();
       currentPage = page;
       page.on('pageerror', error => errors.push(error.message));
       for (const [name, route] of routes) {
-        await page.goto(base + route);
+        if (name === 'analytics') {
+          // Reproduce the real SPA path: Overview registers shared chart plugins first.
+          await page.goto(base + '/overview');
+          await page.locator('.dashboard-page').waitFor();
+          await page.locator(width > 768 ? '.sidebar a[href="/category-browser"]' : '.ux-bottom-nav a[href="/category-browser"]').click();
+        } else await page.goto(base + route);
         await page.locator('.ux-app-header').waitFor();
         await page.locator('.main-content > .page-container, .main-content > .dashboard-page').waitFor();
         await page.waitForTimeout(500);
@@ -116,7 +129,25 @@ async function run() {
           const gap = await page.evaluate(() => document.querySelector('.settings-session-card').getBoundingClientRect().top - document.querySelector('.settings-workspace').getBoundingClientRect().bottom);
           assert.ok(gap >= 20, 'Sign out is separated from account and security settings');
         }
-        if (name === 'analytics') await page.getByRole('img', { name: 'Overall spending pie chart by category' }).waitFor();
+        if (name === 'overview') {
+          await page.locator('.ux-overview-history .monthly-spend-chart canvas').waitFor();
+          assert.ok(await page.locator('.ux-overview-history .monthly-spend-chart canvas').isVisible(), 'Overview spending history is expanded by default');
+          assert.ok(await page.locator('.ux-overview-history .spending-category-card canvas').isVisible(), 'Overview category chart is expanded by default');
+          assert.equal(await page.locator('details.ux-overview-history').count(), 0);
+        }
+        if (name === 'analytics') {
+          await page.getByRole('img', { name: 'Overall spending pie chart by category' }).waitFor();
+          assert.equal(await page.getByRole('button', { name: /Show fewer charts|Merchant, account & weekday breakdowns/ }).count(), 0);
+          for (const card of await page.locator('.analytics-dashboard-grid > article, .analytics-metric-grid > article').all()) assert.ok(await card.isVisible(), 'All analytics charts and highlights are expanded by default');
+          await page.waitForTimeout(500);
+          const labels = await page.evaluate(() => window.analyticsDrawnLabels);
+          assert.ok(labels.includes('$709'), 'The spending total is rendered as a rounded chart annotation');
+          assert.deepEqual(labels.filter(text => /\d+\.\d{3,}/.test(text)), [], 'Canvas annotations must never show floating-point decimal tails');
+          if ([390, 1440].includes(width)) {
+            for (const [title, file] of [['Spending over time', 'analytics-trend'], ['Spending by weekday', 'analytics-weekday'], ['Top merchants', 'analytics-merchants']]) await page.locator('.analytics-chart-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).screenshot({ path: path.join(output, `${file}-${width}.png`), animations: 'disabled' });
+            await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+          }
+        }
         if (name === 'subscriptions') assert.ok(await page.locator('.subscription-calendar-grid').evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'The entire calendar must fit without horizontal scrolling');
         if (name === 'subscriptions' && width === 390) {
           await page.locator('.subscription-calendar-agenda').scrollIntoViewIfNeeded();

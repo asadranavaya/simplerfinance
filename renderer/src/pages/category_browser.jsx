@@ -10,19 +10,21 @@ import PurchaseRow from '../components/PurchaseRow';
 import Sheet from '../components/Sheet';
 import { usePurchaseNavigation } from '../util/purchaseNavigation';
 import { useMediaQuery } from '../util/useMediaQuery';
+import { useTheme } from '../util/ThemeContext';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip);
+ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip, ChartDataLabels);
 
 
 export default function CategoryBrowserPage() {
     const { account } = useAccount();
+    const { isDarkMode } = useTheme();
     const openPurchase = usePurchaseNavigation();
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [query, setQuery] = useState('');
-    const [moreCharts, setMoreCharts] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const requestedStart = searchParams.get('start');
     const requestedEnd = searchParams.get('end');
@@ -521,7 +523,25 @@ export default function CategoryBrowserPage() {
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450 },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => money(context.raw) } } },
+        layout: { padding: { top: 18 } },
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: context => money(context.raw) } },
+            datalabels: {
+                display: context => {
+                    const value = Number(context.dataset.data[context.dataIndex]);
+                    if (!Number.isFinite(value) || value === 0) return false;
+                    return context.chart.config.type !== 'line' || context.chart.width >= 500 || context.dataIndex % 2 === 0;
+                },
+                formatter: value => new Intl.NumberFormat(undefined, {
+                    style: 'currency', currency: reportingCurrency,
+                    notation: Math.abs(Number(value)) >= 1000 ? 'compact' : 'standard', maximumFractionDigits: 0,
+                }).format(Number(value)),
+                color: isDarkMode ? '#b0bad0' : '#566074',
+                font: { size: 10, weight: '600' },
+                anchor: 'end', align: 'end', offset: 3, clamp: true,
+            },
+        },
         scales: {
             x: { grid: { display: false }, ticks: { color: '#8791a7', maxRotation: 0, autoSkip: true } },
             y: { beginAtZero: true, grid: { color: 'rgba(127,127,127,.12)' }, ticks: { color: '#8791a7', callback: value => money(value).replace(/\.00$/, '') } },
@@ -529,7 +549,6 @@ export default function CategoryBrowserPage() {
     };
     const wholeNumberChartBase = {
         ...chartBase,
-        plugins: { ...chartBase.plugins, tooltip: { callbacks: { label: context => wholeMoney(context.raw) } } },
         scales: {
             ...chartBase.scales,
             y: { ...chartBase.scales.y, ticks: { ...chartBase.scales.y.ticks, precision: 0, callback: value => wholeMoney(value) } },
@@ -630,7 +649,7 @@ export default function CategoryBrowserPage() {
             </header>
 
             <div className="ux-tabs" aria-label="Analytics views"><button type="button" aria-pressed={!browserRequested} onClick={() => selectView('overview')}>Overview</button><button type="button" aria-pressed={browserRequested} onClick={() => selectView('browser')}>Transactions</button></div>
-            <div className={`ux-analytics-overview${moreCharts ? ' show-all' : ''}`} hidden={browserRequested}>
+            <div className="ux-analytics-overview" hidden={browserRequested}>
             {analyticsRange === 'custom' && <div className="ux-custom-dates"><label className="ux-field">Start date<input type="date" value={customStartDate} onChange={event => setCustomStartDate(event.target.value)} /></label><label className="ux-field">End date<input type="date" value={customEndDate} min={customStartDate} onChange={event => setCustomEndDate(event.target.value)} /></label></div>}
             {analyticsLoading ? <div className="content-card analytics-loading">Building your spending analysis…</div> : <>
                 {!analytics.all.length && <p className="ux-helper" role="status">No purchases in this period. Choose another analysis period to explore your spending.</p>}
@@ -663,7 +682,7 @@ export default function CategoryBrowserPage() {
 
                     <article className="content-card analytics-chart-card">
                         <header><div><span>Concentration</span><h2>Top merchants</h2></div></header>
-                        <div className="analytics-chart"><Bar data={{ labels: analytics.sortedMerchants.map(([name]) => name.length > 24 ? `${name.slice(0, 23)}…` : name), datasets: [{ data: analytics.sortedMerchants.map(([, value]) => value), backgroundColor: 'rgba(240,147,43,.76)', borderRadius: 7, borderSkipped: false }] }} options={{ ...chartBase, indexAxis: 'y', scales: { x: chartBase.scales.y, y: { grid: { display: false }, ticks: { color: '#8791a7' } } } }} /></div>
+                        <div className="analytics-chart"><Bar data={{ labels: analytics.sortedMerchants.map(([name]) => name.length > 24 ? `${name.slice(0, 23)}…` : name), datasets: [{ data: analytics.sortedMerchants.map(([, value]) => value), backgroundColor: 'rgba(240,147,43,.76)', borderRadius: 7, borderSkipped: false }] }} options={{ ...chartBase, indexAxis: 'y', layout: { padding: { top: 18, right: 48 } }, scales: { x: chartBase.scales.y, y: { grid: { display: false }, ticks: { color: '#8791a7' } } } }} /></div>
                     </article>
 
                     <article className="content-card analytics-chart-card analytics-account-card">
@@ -682,7 +701,6 @@ export default function CategoryBrowserPage() {
                 </section>
             </>}
 
-            <button type="button" className="ux-secondary ux-more-charts" aria-expanded={moreCharts} onClick={() => setMoreCharts(!moreCharts)}>{moreCharts ? 'Show fewer charts' : 'Merchant, account & weekday breakdowns'}</button>
             </div>
             <section hidden={!browserRequested}>
             <div className="analytics-browser-heading" ref={categoryBrowserRef}><div><span className="page-eyebrow">Transaction explorer</span><h2>Category browser</h2><p>Inspect individual purchases, adjust category membership, and manage splits.</p></div></div>
